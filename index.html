@@ -13,6 +13,7 @@
     --texto: #f3f5f8;
     --suave: #a9b3c2;
     --acento: #35d0ba;
+    --acierto: #2fbf71;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -23,57 +24,66 @@
   /* El vídeo de la cámara ocupa toda la pantalla (y se ve como un espejo) */
   video {
     position: fixed; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; transform: scaleX(-1); opacity: .55;
+    object-fit: cover; transform: scaleX(-1); opacity: .5;
   }
   /* El lienzo va encima del vídeo y es donde se dibujan las figuras */
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
 
-  #estado {
+  #info {
     position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px;
-    background: rgba(20,24,31,.8); padding: 8px 14px; border-radius: 999px;
-    font-size: 1rem;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  }
+  #info div {
+    background: rgba(20,24,31,.82); padding: 6px 14px; border-radius: 999px; font-size: 1rem;
   }
   #botones {
     position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-    left: 0; right: 0; display: flex; gap: 12px; justify-content: center;
+    left: 0; right: 0; display: flex; gap: 10px; justify-content: center;
   }
   button, select, input { font: inherit; }
   button {
     background: var(--panel); color: var(--texto); border: 2px solid #3a4352;
-    padding: 12px 20px; border-radius: 12px; cursor: pointer;
+    padding: 12px 18px; border-radius: 12px; cursor: pointer;
   }
   button:focus-visible, select:focus-visible, input:focus-visible {
     outline: 3px solid var(--acento); outline-offset: 2px;
   }
   button.principal { background: var(--acento); color: #08211d; border-color: var(--acento); font-weight: 600; }
 
-  /* Pantalla de inicio */
-  #inicio {
-    position: fixed; inset: 0; background: var(--fondo);
+  /* Pantallas que se ponen por encima: inicio, ayuda y final */
+  .capa {
+    position: fixed; inset: 0; padding: 24px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 16px; padding: 24px; text-align: center;
+    gap: 16px; text-align: center; overflow-y: auto;
   }
-  #inicio h1 { margin: 0; font-size: 1.8rem; }
-  #inicio p { margin: 0; color: var(--suave); max-width: 32ch; line-height: 1.4; }
+  #inicio { background: var(--fondo); }
+  #ayuda, #fin { background: rgba(20,24,31,.95); }
+  .capa h1, .capa h2 { margin: 0; }
+  .capa h1 { font-size: 1.8rem; }
+  .capa p { margin: 0; color: var(--suave); max-width: 34ch; line-height: 1.45; }
+  .reglas { text-align: left; max-width: 34ch; line-height: 1.45; margin: 0; padding-left: 1.3em; }
+  .reglas li { margin-bottom: 8px; }
+  #resultado p { color: var(--texto); font-size: 1.2rem; margin-bottom: 8px; }
 
   /* Menú de configuración */
   #menu {
-    position: fixed; inset: 0; background: rgba(20,24,31,.97);
+    position: fixed; inset: 0; background: rgba(20,24,31,.98);
     overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 32px;
   }
-  #menu h2 { margin: 0 0 4px; }
-  #menu .ayuda { color: var(--suave); margin: 0 0 16px; }
+  #menu h2 { margin: 0 0 12px; }
+  #menu h3 { margin: 24px 0 8px; }
+  #menu .nota { color: var(--suave); margin: 0 0 12px; line-height: 1.4; }
   .figura {
     display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center;
     background: var(--panel); padding: 12px; border-radius: 12px; margin-bottom: 12px;
   }
   .figura label { color: var(--suave); }
-  .figura select, .figura input[type=color] {
+  select, input[type=color] {
     width: 100%; padding: 8px; border-radius: 8px; border: 2px solid #3a4352;
     background: var(--fondo); color: var(--texto);
   }
-  .figura input[type=color] { height: 42px; padding: 2px; }
-  .ajuste { margin: 16px 0; }
+  input[type=color] { height: 42px; padding: 2px; }
+  .ajuste { margin: 14px 0; }
   .ajuste input[type=range] { width: 100%; }
   .oculto { display: none !important; }
 
@@ -86,36 +96,86 @@
   <video id="video" playsinline muted></video>
   <canvas id="lienzo"></canvas>
 
-  <div id="estado">Gesto: ninguno</div>
+  <div id="info">
+    <div id="estado">Gesto: ninguno</div>
+    <div id="marcador">Aciertos 0 · Fallos 0</div>
+  </div>
 
   <div id="botones">
     <button id="btnMenu">Menú</button>
-    <button id="btnReiniciar">Volver a mostrar figuras</button>
+    <button id="btnReiniciar">Nueva partida</button>
+    <button id="btnAyuda" aria-label="Cómo se juega">?</button>
   </div>
 
-  <div id="inicio">
+  <!-- Pantalla de inicio con la explicación del juego -->
+  <div id="inicio" class="capa">
     <h1>Figuras y gestos</h1>
-    <p>Haz un gesto con la mano delante de la cámara y las figuras desaparecerán.</p>
-    <button id="btnEmpezar" class="principal">Activar la cámara</button>
+    <ol class="reglas" id="reglas">
+      <li>Aparecen figuras de colores en la pantalla.</li>
+      <li>Cada figura te muestra el gesto que tienes que hacer con la mano.</li>
+      <li>Haz ese gesto delante de la cámara y mantenlo un momento: la figura desaparece y sumas un acierto.</li>
+      <li>Si tardas demasiado, la figura se va sola y cuenta como fallo.</li>
+    </ol>
+    <p>Consejo: usa buena luz y pon la mano entera a unos 30-60 cm de la cámara. En el menú puedes cambiar cuántas figuras salen, cuánto tiempo duran y qué gesto pide cada una.</p>
+    <button id="btnEmpezar" class="principal">Activar la cámara y jugar</button>
     <p id="mensaje"></p>
+  </div>
+
+  <!-- La misma explicación, para verla cuando quieras con el botón "?" -->
+  <div id="ayuda" class="capa oculto">
+    <h2>Cómo se juega</h2>
+    <ol class="reglas" id="reglasAyuda"></ol>
+    <button id="btnCerrarAyuda" class="principal">Entendido</button>
+  </div>
+
+  <!-- Pantalla final con los resultados -->
+  <div id="fin" class="capa oculto">
+    <h2>Partida terminada</h2>
+    <div id="resultado"></div>
+    <button id="btnOtraVez" class="principal">Jugar otra vez</button>
+    <button id="btnFinMenu">Menú</button>
   </div>
 
   <div id="menu" class="oculto">
     <h2>Menú</h2>
-    <p class="ayuda">Elige el gesto que hace desaparecer cada figura.</p>
-    <div id="listaFiguras"></div>
-    <button id="btnAnadir">Añadir figura</button>
 
+    <h3>La partida</h3>
     <div class="ajuste">
-      <label for="rngMantener">Tiempo que hay que mantener el gesto: <b id="valMantener"></b> ms</label>
+      <label for="rngSimult">Figuras a la vez en pantalla: <b id="valSimult"></b></label>
+      <input type="range" id="rngSimult" min="1" max="6" step="1">
+    </div>
+    <div class="ajuste">
+      <label for="rngTotal">Figuras en cada partida: <b id="valTotal"></b></label>
+      <input type="range" id="rngTotal" min="1" max="50" step="1">
+    </div>
+    <div class="ajuste">
+      <label for="rngDuracion">Tiempo que dura cada figura: <b id="valDuracion"></b></label>
+      <input type="range" id="rngDuracion" min="0" max="30" step="1">
+    </div>
+    <div class="ajuste">
+      <label for="selMostrar">Qué se ve dentro de cada figura</label>
+      <select id="selMostrar">
+        <option value="todo">Dibujo y nombre del gesto</option>
+        <option value="dibujo">Solo el dibujo del gesto</option>
+        <option value="nada">Nada (hay que recordar qué gesto es de cada figura)</option>
+      </select>
+    </div>
+    <div class="ajuste">
+      <label for="rngMantener">Tiempo que hay que mantener el gesto: <b id="valMantener"></b></label>
       <input type="range" id="rngMantener" min="0" max="2000" step="100">
     </div>
     <div class="ajuste">
-      <label for="rngConfianza">Seguridad mínima del gesto: <b id="valConfianza"></b> %</label>
+      <label for="rngConfianza">Seguridad mínima del gesto: <b id="valConfianza"></b></label>
       <input type="range" id="rngConfianza" min="30" max="95" step="5">
     </div>
 
-    <button id="btnCerrarMenu" class="principal">Guardar y volver</button>
+    <h3>Las figuras</h3>
+    <p class="nota">En cada partida salen figuras al azar de esta lista. Elige la forma, el color y el gesto de cada una.</p>
+    <div id="listaFiguras"></div>
+    <button id="btnAnadir">Añadir figura</button>
+
+    <p></p>
+    <button id="btnCerrarMenu" class="principal">Guardar y jugar</button>
   </div>
 
 <!-- ============ 3) LÓGICA (JavaScript) ============ -->
@@ -125,7 +185,7 @@ import { GestureRecognizer, FilesetResolver }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
 
 /* ---------- Listas de opciones ---------- */
-// Los nombres de la izquierda los usa MediaPipe; los de la derecha son lo que ves tú.
+// Las claves de la izquierda las usa MediaPipe; lo de la derecha es lo que ves tú.
 const GESTOS = {
   Closed_Fist: "Puño cerrado",
   Open_Palm:   "Mano abierta",
@@ -135,6 +195,15 @@ const GESTOS = {
   Victory:     "Victoria (dos dedos)",
   ILoveYou:    "Te quiero (pulgar, índice y meñique)"
 };
+// Nombres cortos, para que quepan dentro de la pantalla de juego
+const CORTOS = {
+  Closed_Fist: "Puño", Open_Palm: "Mano abierta", Thumb_Up: "Pulgar arriba",
+  Thumb_Down: "Pulgar abajo", Pointing_Up: "Señalar", Victory: "Victoria", ILoveYou: "Te quiero"
+};
+const EMOJIS = {
+  Closed_Fist: "✊", Open_Palm: "✋", Thumb_Up: "👍", Thumb_Down: "👎",
+  Pointing_Up: "☝️", Victory: "✌️", ILoveYou: "🤟"
+};
 const FORMAS = {
   circulo: "Círculo", cuadrado: "Cuadrado", triangulo: "Triángulo",
   rombo: "Rombo", hexagono: "Hexágono", estrella: "Estrella"
@@ -142,6 +211,10 @@ const FORMAS = {
 
 /* ---------- Configuración (se guarda en el móvil) ---------- */
 const CONFIG_INICIAL = {
+  simultaneas: 3,   // figuras que hay a la vez en pantalla
+  total: 10,        // figuras que salen en cada partida
+  duracion: 8,      // segundos que dura cada figura (0 = sin límite)
+  mostrar: "todo",  // "todo", "dibujo" o "nada"
   mantener: 400,    // milisegundos que hay que mantener el gesto
   confianza: 60,    // % mínimo de seguridad
   figuras: [
@@ -155,11 +228,16 @@ const CONFIG_INICIAL = {
 };
 
 function cargarConfig() {
+  const base = structuredClone(CONFIG_INICIAL);
   try {
     const guardado = localStorage.getItem("figuras-gestos");
-    if (guardado) return JSON.parse(guardado);
+    if (guardado) {
+      const o = JSON.parse(guardado);
+      // Mezclamos lo guardado con lo inicial, por si faltan ajustes nuevos
+      return { ...base, ...o, figuras: (Array.isArray(o.figuras) && o.figuras.length) ? o.figuras : base.figuras };
+    }
   } catch (e) { /* si falla, usamos la configuración inicial */ }
-  return structuredClone(CONFIG_INICIAL);
+  return base;
 }
 function guardarConfig() {
   try { localStorage.setItem("figuras-gestos", JSON.stringify(config)); } catch (e) {}
@@ -170,14 +248,113 @@ let config = cargarConfig();
 const $ = (id) => document.getElementById(id);
 const video = $("video"), lienzo = $("lienzo"), ctx = lienzo.getContext("2d");
 
-/* ---------- Estado de las figuras ---------- */
-// "visibilidad" va de 1 (se ve) a 0 (ha desaparecido). "objetivo" es hacia donde va.
-let visibilidad = [], objetivo = [];
-function reiniciarFiguras() {
-  visibilidad = config.figuras.map(() => 1);
-  objetivo    = config.figuras.map(() => 1);
+/* ---------- La partida ---------- */
+// fase: "cuenta" (3, 2, 1), "jugando", "pausa" o "fin"
+// slots: los huecos de la pantalla; cada uno está vacío (null) o tiene una figura
+let juego = { fase: "fin", slots: [], libreDesde: [], creadas: 0, aciertos: 0, fallos: 0, tiempos: [], inicioCuenta: 0 };
+let faseAntes = "jugando", pausadoEn = 0;
+
+function nuevaPartida() {
+  const n = Math.min(6, Math.max(1, config.simultaneas));
+  juego = {
+    fase: "cuenta",
+    slots: Array(n).fill(null),
+    libreDesde: Array(n).fill(0),
+    creadas: 0, aciertos: 0, fallos: 0, tiempos: [],
+    inicioCuenta: performance.now()
+  };
+  $("fin").classList.add("oculto");
 }
-reiniciarFiguras();
+
+// Pausar y reanudar (al abrir el menú o la ayuda). Al reanudar, "movemos" los
+// relojes el tiempo que ha durado la pausa para que las figuras no se pierdan.
+function pausar() {
+  if (juego.fase === "cuenta" || juego.fase === "jugando") {
+    faseAntes = juego.fase; juego.fase = "pausa"; pausadoEn = performance.now();
+  }
+}
+function reanudar() {
+  if (juego.fase !== "pausa") return;
+  const dt = performance.now() - pausadoEn;
+  juego.inicioCuenta += dt;
+  juego.libreDesde = juego.libreDesde.map((t) => t + dt);
+  juego.slots.forEach((s) => { if (s) s.nacida += dt; });
+  juego.fase = faseAntes;
+}
+
+// Elige una figura nueva al azar de la lista
+function crearFigura(ahora) {
+  // Evitamos repetir un gesto que ya está en pantalla (o que estás haciendo ahora mismo)
+  const enUso = juego.slots.filter(Boolean).map((s) => config.figuras[s.idx].gesto);
+  if (gestoActual !== "Ninguno") enUso.push(gestoActual);
+  const todas = config.figuras.map((f, i) => i);
+  let candidatas = todas.filter((i) => !enUso.includes(config.figuras[i].gesto));
+  if (candidatas.length === 0) candidatas = todas;
+  const idx = candidatas[Math.floor(Math.random() * candidatas.length)];
+  juego.creadas++;
+  return { idx, nacida: ahora, alfa: 0, meta: 1, resultado: null };
+}
+
+// Una figura se resuelve cuando aciertas o se acaba su tiempo
+function resolver(s, acierto) {
+  s.meta = 0;
+  s.resultado = acierto ? "ok" : "fallo";
+  if (acierto) {
+    juego.aciertos++;
+    juego.tiempos.push(Math.max(0, desde - s.nacida)); // lo que tardaste en empezar el gesto
+  } else {
+    juego.fallos++;
+  }
+}
+
+function actualizarJuego(ahora) {
+  if (juego.fase === "cuenta") {
+    if (ahora - juego.inicioCuenta >= 3000) {
+      juego.fase = "jugando";
+      // Las figuras van saliendo una detrás de otra, no todas de golpe
+      juego.libreDesde = juego.slots.map((_, i) => ahora + i * 500);
+    }
+    return;
+  }
+  if (juego.fase !== "jugando") return;
+
+  juego.slots.forEach((s, i) => {
+    if (!s) {
+      // Hueco vacío: sacamos una figura nueva si aún quedan y ha pasado la pausa
+      if (juego.creadas < config.total && ahora >= juego.libreDesde[i]) {
+        juego.slots[i] = crearFigura(ahora);
+      }
+      return;
+    }
+    // ¿Se ha acabado el tiempo de esta figura?
+    if (s.meta === 1 && config.duracion > 0 && ahora - s.nacida >= config.duracion * 1000) {
+      resolver(s, false);
+    }
+    // Aparece o se desvanece poco a poco
+    s.alfa += (s.meta - s.alfa) * 0.15;
+    if (s.meta === 0 && s.alfa < 0.03) {
+      juego.slots[i] = null;
+      juego.libreDesde[i] = ahora + 600;
+    }
+  });
+
+  // ¿Ha terminado la partida?
+  if (juego.creadas >= config.total && juego.slots.every((s) => !s)) {
+    juego.fase = "fin";
+    mostrarFin();
+  }
+}
+
+function mostrarFin() {
+  const total = juego.aciertos + juego.fallos;
+  let html = `<p><b>${juego.aciertos}</b> aciertos de ${total} figuras</p>`;
+  if (juego.tiempos.length) {
+    const media = juego.tiempos.reduce((a, b) => a + b, 0) / juego.tiempos.length / 1000;
+    html += `<p>Tiempo medio hasta empezar el gesto: <b>${media.toFixed(1).replace(".", ",")} s</b></p>`;
+  }
+  $("resultado").innerHTML = html;
+  $("fin").classList.remove("oculto");
+}
 
 /* ---------- Dibujar ---------- */
 function ajustarLienzo() {
@@ -210,35 +387,103 @@ function trazarForma(tipo, cx, cy, r) {
   ctx.closePath();
 }
 
-function dibujar() {
+function rectRedondo(x, y, w, h, radio) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, radio); else ctx.rect(x, y, w, h);
+}
+
+// Calcula dónde va cada hueco de la pantalla
+function disposicion(n) {
+  const ancho = window.innerWidth, alto = window.innerHeight;
+  const columnas = ancho > alto ? Math.min(3, n) : Math.min(2, n);
+  const filas = Math.ceil(n / columnas);
+  const margenSup = alto < 500 ? 80 : 120, margenInf = alto < 500 ? 70 : 90;
+  const celdaAncho = ancho / columnas;
+  const celdaAlto = (alto - margenSup - margenInf) / filas;
+  const radio = Math.min(celdaAncho, celdaAlto) * 0.28;
+  const pos = [];
+  for (let i = 0; i < n; i++) {
+    const fila = Math.floor(i / columnas), col = i % columnas;
+    const enFila = Math.min(columnas, n - fila * columnas);   // así la última fila queda centrada
+    const x0 = (ancho - enFila * celdaAncho) / 2;
+    pos.push({ cx: x0 + col * celdaAncho + celdaAncho / 2,
+               cy: margenSup + fila * celdaAlto + celdaAlto / 2 - radio * 0.2 });
+  }
+  return { pos, radio };
+}
+
+function dibujarFigura(s, cx, cy, r, ahora) {
+  const fig = config.figuras[s.idx];
+  ctx.globalAlpha = s.alfa;
+
+  // La figura
+  trazarForma(fig.forma, cx, cy, r * (0.6 + 0.4 * s.alfa));
+  ctx.fillStyle = fig.color;
+  ctx.fill();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = s.resultado === "ok" ? "#2fbf71" : s.resultado === "fallo" ? "#ff4d4d" : "#ffffff";
+  ctx.stroke();
+
+  // El dibujo del gesto, dentro de la figura
+  if (config.mostrar !== "nada") {
+    ctx.font = `${Math.round(r * 0.9)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#000";
+    ctx.fillText(EMOJIS[fig.gesto] || "", cx, cy + r * 0.05);
+  }
+
+  // El nombre del gesto, debajo de la figura
+  if (config.mostrar === "todo") {
+    const texto = CORTOS[fig.gesto] || "";
+    const tam = Math.max(15, Math.round(r * 0.3));
+    ctx.font = `600 ${tam}px system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const w = ctx.measureText(texto).width + 24, h = tam + 14;
+    const py = cy + r * 1.45;
+    ctx.fillStyle = "rgba(20,24,31,.88)";
+    rectRedondo(cx - w / 2, py, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(texto, cx, py + h / 2 + 1);
+  }
+
+  if (s.meta === 1) {
+    // Anillo blanco: el tiempo que le queda a la figura
+    if (config.duracion > 0) {
+      const resto = Math.max(0, 1 - (ahora - s.nacida) / (config.duracion * 1000));
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 1.3, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * resto);
+      ctx.lineWidth = 5; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.stroke();
+    }
+    // Anillo verde: lo que llevas mantenido el gesto correcto
+    if (fig.gesto === gestoActual && desde >= s.nacida) {
+      const avance = Math.min(1, (ahora - desde) / Math.max(1, config.mantener));
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 1.15, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * avance);
+      ctx.lineWidth = 8; ctx.strokeStyle = "#2fbf71"; ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function dibujar(ahora) {
   const ancho = window.innerWidth, alto = window.innerHeight;
   ctx.clearRect(0, 0, ancho, alto);
 
-  const n = config.figuras.length;
-  const columnas = ancho > alto ? Math.min(3, n) : Math.min(2, n);
-  const filas = Math.ceil(n / columnas);
-  const margenSup = 70, margenInf = 90;               // espacio para el estado y los botones
-  const celdaAncho = ancho / columnas;
-  const celdaAlto = (alto - margenSup - margenInf) / filas;
-  const radio = Math.min(celdaAncho, celdaAlto) * 0.34;
+  if (juego.fase === "cuenta") {
+    const segundos = Math.max(1, Math.ceil((3000 - (ahora - juego.inicioCuenta)) / 1000));
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 120px system-ui, sans-serif";
+    ctx.fillText(String(segundos), ancho / 2, alto / 2 - 20);
+    ctx.font = "600 22px system-ui, sans-serif";
+    ctx.fillText("Prepara la mano", ancho / 2, alto / 2 + 60);
+    return;
+  }
 
-  config.figuras.forEach((fig, i) => {
-    // Acercamos poco a poco la visibilidad a su objetivo (así se desvanece suave)
-    visibilidad[i] += (objetivo[i] - visibilidad[i]) * 0.15;
-    if (visibilidad[i] < 0.01) return;                // ya no se ve: no dibujamos
-
-    const cx = (i % columnas) * celdaAncho + celdaAncho / 2;
-    const cy = margenSup + Math.floor(i / columnas) * celdaAlto + celdaAlto / 2;
-
-    ctx.globalAlpha = visibilidad[i];
-    trazarForma(fig.forma, cx, cy, radio * (0.6 + 0.4 * visibilidad[i]));
-    ctx.fillStyle = fig.color;
-    ctx.fill();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = "#ffffff";
-    ctx.stroke();
+  const { pos, radio } = disposicion(juego.slots.length);
+  juego.slots.forEach((s, i) => {
+    if (s && s.alfa > 0.01) dibujarFigura(s, pos[i].cx, pos[i].cy, radio, ahora);
   });
-  ctx.globalAlpha = 1;
 }
 
 /* ---------- Reconocer gestos ---------- */
@@ -247,7 +492,7 @@ let gestoActual = "Ninguno";   // gesto que se está viendo ahora
 let desde = 0;                 // desde cuándo se ve ese gesto
 let ultimoFotograma = -1;
 
-function procesar(resultado) {
+function procesar(resultado, ahora) {
   let gesto = "Ninguno", seguridad = 0;
   if (resultado.gestures.length > 0) {
     const mejor = resultado.gestures[0][0];
@@ -256,27 +501,39 @@ function procesar(resultado) {
   }
   if (gesto === "None" || seguridad < config.confianza) gesto = "Ninguno";
 
-  const ahora = performance.now();
   if (gesto !== gestoActual) { gestoActual = gesto; desde = ahora; }
+  $("estado").textContent = "Gesto: " + (CORTOS[gesto] || "ninguno");
 
-  $("estado").textContent = "Gesto: " + (GESTOS[gesto] || "ninguno");
+  if (juego.fase !== "jugando" || gesto === "Ninguno" || ahora - desde < config.mantener) return;
 
-  // Si el gesto se ha mantenido el tiempo suficiente, desaparecen las figuras que lo tengan asignado
-  if (gesto !== "Ninguno" && ahora - desde >= config.mantener) {
-    config.figuras.forEach((fig, i) => {
-      if (fig.gesto === gesto) objetivo[i] = 0;
-    });
-  }
+  // Si mantienes un gesto el tiempo suficiente, aciertas las figuras que lo piden.
+  // (El gesto tiene que haber empezado después de que apareciera la figura.)
+  juego.slots.forEach((s) => {
+    if (s && s.meta === 1 && config.figuras[s.idx].gesto === gesto && desde >= s.nacida) {
+      resolver(s, true);
+    }
+  });
 }
 
-// Este bucle se repite sin parar: mira la cámara, reconoce el gesto y dibuja
+function actualizarMarcador() {
+  const n = Math.min(juego.creadas, config.total);
+  $("marcador").textContent = `Aciertos ${juego.aciertos} · Fallos ${juego.fallos} · Figura ${n} de ${config.total}`;
+}
+
+// Este bucle se repite sin parar: mira la cámara, reconoce el gesto, actualiza la partida y dibuja
 function bucle() {
-  if (video.currentTime !== ultimoFotograma) {
-    ultimoFotograma = video.currentTime;
-    const resultado = reconocedor.recognizeForVideo(video, performance.now());
-    procesar(resultado);
+  const ahora = performance.now();
+  try {
+    if (video.currentTime !== ultimoFotograma) {
+      ultimoFotograma = video.currentTime;
+      procesar(reconocedor.recognizeForVideo(video, ahora), ahora);
+    }
+    actualizarJuego(ahora);
+    actualizarMarcador();
+    dibujar(ahora);
+  } catch (error) {
+    console.error(error);
   }
-  dibujar();
   requestAnimationFrame(bucle);
 }
 
@@ -311,6 +568,7 @@ async function empezar() {
     await video.play();
 
     $("inicio").classList.add("oculto");
+    nuevaPartida();
     bucle();
   } catch (error) {
     $("btnEmpezar").disabled = false;
@@ -321,6 +579,13 @@ async function empezar() {
 }
 $("btnEmpezar").addEventListener("click", empezar);
 
+/* ---------- Ayuda y pantalla final ---------- */
+$("reglasAyuda").innerHTML = $("reglas").innerHTML;   // la misma explicación del inicio
+$("btnAyuda").addEventListener("click", () => { pausar(); $("ayuda").classList.remove("oculto"); });
+$("btnCerrarAyuda").addEventListener("click", () => { $("ayuda").classList.add("oculto"); reanudar(); });
+$("btnReiniciar").addEventListener("click", nuevaPartida);
+$("btnOtraVez").addEventListener("click", nuevaPartida);
+
 /* ---------- Menú ---------- */
 function opciones(lista, seleccionado) {
   return Object.entries(lista)
@@ -328,6 +593,26 @@ function opciones(lista, seleccionado) {
       `<option value="${clave}" ${clave === seleccionado ? "selected" : ""}>${nombre}</option>`)
     .join("");
 }
+
+// Conecta una barra deslizante con un ajuste: al moverla, se guarda el valor
+function ligar(idRango, idValor, clave, formato) {
+  const rango = $(idRango), valor = $(idValor);
+  const pintar = () => { valor.textContent = formato(config[clave]); };
+  rango.value = config[clave];
+  pintar();
+  rango.addEventListener("input", () => {
+    config[clave] = Number(rango.value);
+    pintar(); guardarConfig();
+  });
+}
+ligar("rngSimult",   "valSimult",   "simultaneas", (v) => v);
+ligar("rngTotal",    "valTotal",    "total",       (v) => v);
+ligar("rngDuracion", "valDuracion", "duracion",    (v) => v === 0 ? "sin límite" : v + " s");
+ligar("rngMantener", "valMantener", "mantener",    (v) => v + " ms");
+ligar("rngConfianza","valConfianza","confianza",   (v) => v + " %");
+
+$("selMostrar").value = config.mostrar;
+$("selMostrar").addEventListener("change", (e) => { config.mostrar = e.target.value; guardarConfig(); });
 
 function pintarMenu() {
   const cont = $("listaFiguras");
@@ -340,42 +625,30 @@ function pintarMenu() {
       <select id="f${i}">${opciones(FORMAS, fig.forma)}</select>
       <label for="c${i}">Color</label>
       <input type="color" id="c${i}" value="${fig.color}">
-      <label for="g${i}">Desaparece con</label>
+      <label for="g${i}">Gesto</label>
       <select id="g${i}">${opciones(GESTOS, fig.gesto)}</select>
-      <span></span>
-      <button data-quitar="${i}">Quitar esta figura</button>`;
+      ${config.figuras.length > 1 ? `<span></span><button data-quitar="${i}">Quitar esta figura</button>` : ""}`;
     cont.appendChild(tarjeta);
 
     $("f" + i).addEventListener("change", (e) => { fig.forma = e.target.value; guardarConfig(); });
     $("c" + i).addEventListener("input",  (e) => { fig.color = e.target.value; guardarConfig(); });
     $("g" + i).addEventListener("change", (e) => { fig.gesto = e.target.value; guardarConfig(); });
-    tarjeta.querySelector("[data-quitar]").addEventListener("click", () => {
+    const quitar = tarjeta.querySelector("[data-quitar]");
+    if (quitar) quitar.addEventListener("click", () => {
       config.figuras.splice(i, 1);
-      guardarConfig(); reiniciarFiguras(); pintarMenu();
+      guardarConfig(); pintarMenu();
     });
   });
-
-  $("rngMantener").value = config.mantener;
-  $("valMantener").textContent = config.mantener;
-  $("rngConfianza").value = config.confianza;
-  $("valConfianza").textContent = config.confianza;
 }
 
-$("rngMantener").addEventListener("input", (e) => {
-  config.mantener = Number(e.target.value);
-  $("valMantener").textContent = config.mantener; guardarConfig();
-});
-$("rngConfianza").addEventListener("input", (e) => {
-  config.confianza = Number(e.target.value);
-  $("valConfianza").textContent = config.confianza; guardarConfig();
-});
 $("btnAnadir").addEventListener("click", () => {
   config.figuras.push({ forma: "circulo", color: "#ff6b6b", gesto: "Closed_Fist" });
-  guardarConfig(); reiniciarFiguras(); pintarMenu();
+  guardarConfig(); pintarMenu();
 });
-$("btnMenu").addEventListener("click", () => { pintarMenu(); $("menu").classList.remove("oculto"); });
-$("btnCerrarMenu").addEventListener("click", () => { $("menu").classList.add("oculto"); reiniciarFiguras(); });
-$("btnReiniciar").addEventListener("click", reiniciarFiguras);
+function abrirMenu() { pausar(); pintarMenu(); $("fin").classList.add("oculto"); $("menu").classList.remove("oculto"); }
+$("btnMenu").addEventListener("click", abrirMenu);
+$("btnFinMenu").addEventListener("click", abrirMenu);
+$("btnCerrarMenu").addEventListener("click", () => { $("menu").classList.add("oculto"); nuevaPartida(); });
 </script>
 </body>
 </html>
