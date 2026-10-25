@@ -60,7 +60,7 @@
   .capa > :first-child { margin-top: auto; }
   .capa > :last-child { margin-bottom: auto; }
   #inicio { background: var(--fondo); }
-  #ayuda, #fin, #historial { background: rgba(20,24,31,.96); }
+  #ayuda, #fin, #historial, #eleccion { background: rgba(20,24,31,.96); }
   #historial { z-index: 30; }   /* el historial se puede abrir desde el menú, así que va por encima */
   .capa h1, .capa h2 { margin: 0; }
   .capa h1 { font-size: 1.8rem; }
@@ -73,7 +73,7 @@
 
   /* Historial */
   #histContenido { width: 100%; max-width: 520px; }
-  #histContenido table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .95rem; }
+  #histContenido table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .85rem; }
   #histContenido th, #histContenido td { padding: 8px 6px; border-bottom: 1px solid #3a4352; text-align: left; }
   #histContenido th { color: var(--suave); font-weight: 600; }
   .filaBotones { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
@@ -100,6 +100,9 @@
   .ajuste input[type=range] { width: 100%; }
   .casilla { display: flex; gap: 10px; align-items: center; margin: 12px 0; }
   .casilla input { width: 22px; height: 22px; }
+  #eleccion .ajuste { width: 100%; max-width: 36ch; text-align: left; margin: 0; }
+  #eleccion .ajuste label { display: block; margin-bottom: 4px; }
+  #bloqueContinuar { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .oculto { display: none !important; }
 
   @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
@@ -114,6 +117,7 @@
   <div id="info">
     <div id="estado">Gesto: ninguno</div>
     <div id="marcador">Aciertos 0 · Fallos 0</div>
+    <div id="nivelInfo"></div>
   </div>
 
   <div id="botones">
@@ -127,9 +131,29 @@
     <h1>Figuras y gestos</h1>
     <ol class="reglas" id="reglas"></ol>
     <p class="privacidad">Las imágenes de la cámara no se graban, no se guardan ni se envían a ningún sitio: todo se analiza en tu propio dispositivo. Solo se guardan en él tus ajustes y los resultados de las partidas.</p>
-    <p>Consejo: usa buena luz y pon la mano entera a unos 30-60 cm de la cámara. En el menú puedes cambiar el ejercicio, la dificultad y todo lo demás.</p>
+    <p>Consejo: usa buena luz y pon la mano entera a unos 30-60 cm de la cámara. Al activar la cámara podrás elegir los gestos que quieres practicar y la dificultad, o continuar donde lo dejaste la última vez.</p>
     <button id="btnEmpezar" class="principal">Activar la cámara y jugar</button>
     <p id="mensaje"></p>
+  </div>
+
+  <!-- Elegir con qué jugar (aparece después de activar la cámara) -->
+  <div id="eleccion" class="capa oculto">
+    <h2>¿Con qué quieres jugar?</h2>
+    <div id="bloqueContinuar" class="oculto">
+      <button id="btnContinuar" class="principal">Continuar donde lo dejaste</button>
+      <p id="textoContinuar"></p>
+    </div>
+    <p id="otraCosa">O elige otros gestos y otra dificultad:</p>
+    <div class="ajuste">
+      <label for="selProgramaIni">Gestos que quieres practicar</label>
+      <select id="selProgramaIni"></select>
+    </div>
+    <div class="ajuste">
+      <label for="selNivelIni">Dificultad</label>
+      <select id="selNivelIni"></select>
+      <p class="nota" id="notaNivelIni"></p>
+    </div>
+    <button id="btnJugar" class="principal">Empezar</button>
   </div>
 
   <!-- La misma explicación, para verla cuando quieras con el botón "?" -->
@@ -163,112 +187,35 @@
   <div id="menu" class="oculto">
     <h2>Menú</h2>
 
-    <h3>Tipo de ejercicio</h3>
+    <h3>Las figuras</h3>
     <div class="ajuste">
-      <label for="selEjercicio">Qué hay que hacer con cada figura</label>
-      <select id="selEjercicio">
-        <option value="gestos">Hacer un gesto con la mano</option>
-        <option value="dedo">Llevar un dedo hasta la figura</option>
+      <label for="selPrograma">Gestos que quieres practicar</label>
+      <select id="selPrograma">
+        <option value="serie">Los 7 gestos de serie</option>
+        <option value="contar">Contar con los dedos (1 al 5)</option>
+        <option value="oposicion">Oposición del pulgar</option>
       </select>
-    </div>
-    <div class="ajuste soloDedo">
-      <label for="selDedo">Dedo que toca las figuras</label>
-      <select id="selDedo">
-        <option value="8">Índice</option>
-        <option value="12">Corazón</option>
-        <option value="16">Anular</option>
-        <option value="20">Meñique</option>
-        <option value="4">Pulgar</option>
-      </select>
-      <p class="nota">Al terminar verás cuánto has movido la mano. Ese dato depende de lo cerca que estés de la cámara, así que sirve para comparar partidas hechas a la misma distancia.</p>
+      <p class="nota" id="notaPrograma"></p>
     </div>
 
     <h3>Dificultad</h3>
     <div class="ajuste">
       <label for="selNivel">Nivel</label>
       <select id="selNivel">
+        <option value="auto">Automática (recomendada)</option>
+        <option value="muyfacil">Muy fácil</option>
         <option value="facil">Fácil</option>
         <option value="medio">Medio</option>
         <option value="dificil">Difícil</option>
-        <option value="personalizado">Personalizado</option>
       </select>
-      <p class="nota">Al elegir un nivel se ajustan solos los valores de abajo. Si cambias alguno, el nivel pasa a «Personalizado».</p>
-    </div>
-
-    <h3>La partida</h3>
-    <div class="ajuste">
-      <label for="selModoPartida">La partida termina</label>
-      <select id="selModoPartida">
-        <option value="figuras">Después de un número de figuras</option>
-        <option value="tiempo">Cuando se acaba el tiempo (tantos aciertos como puedas)</option>
-      </select>
-    </div>
-    <div class="ajuste soloFiguras">
-      <label for="rngTotal">Figuras en cada partida: <b id="valTotal"></b></label>
-      <input type="range" id="rngTotal" min="1" max="50" step="1">
-    </div>
-    <div class="ajuste soloTiempo">
-      <label for="rngTiempoTotal">Duración de la partida: <b id="valTiempoTotal"></b></label>
-      <input type="range" id="rngTiempoTotal" min="20" max="300" step="10">
-    </div>
-    <div class="ajuste">
-      <label for="rngSimult">Figuras a la vez en pantalla: <b id="valSimult"></b></label>
-      <input type="range" id="rngSimult" min="1" max="6" step="1">
-    </div>
-    <div class="ajuste">
-      <label for="rngDuracion">Tiempo que dura cada figura: <b id="valDuracion"></b></label>
-      <input type="range" id="rngDuracion" min="0" max="30" step="1">
-    </div>
-    <div class="ajuste">
-      <label for="selPosicion">Posición de las figuras</label>
-      <select id="selPosicion">
-        <option value="fija">Siempre en el mismo sitio</option>
-        <option value="azar">En un sitio al azar cada vez</option>
-      </select>
-    </div>
-    <div class="ajuste">
-      <label for="selMovimiento">Movimiento de las figuras</label>
-      <select id="selMovimiento">
-        <option value="quieta">Quietas</option>
-        <option value="lenta">Se mueven despacio</option>
-        <option value="media">Se mueven a velocidad media</option>
-        <option value="rapida">Se mueven rápido</option>
-      </select>
-      <p class="nota">Si las figuras se mueven, siempre salen en un sitio al azar.</p>
-    </div>
-    <div class="ajuste">
-      <label for="rngMantener">Tiempo que hay que mantener el gesto (o el dedo sobre la figura): <b id="valMantener"></b></label>
-      <input type="range" id="rngMantener" min="0" max="10000" step="100">
-    </div>
-    <div class="ajuste soloGestos">
-      <label for="rngConfianza">Seguridad mínima de los gestos de serie: <b id="valConfianza"></b></label>
-      <input type="range" id="rngConfianza" min="30" max="95" step="5">
-    </div>
-    <div class="ajuste soloGestos">
-      <label for="selMostrar">Qué se ve dentro de cada figura</label>
-      <select id="selMostrar">
-        <option value="todo">Dibujo y nombre del gesto</option>
-        <option value="dibujo">Solo el dibujo del gesto</option>
-        <option value="nada">Nada (hay que recordar qué gesto es de cada figura)</option>
-      </select>
+      <p class="nota" id="notaNivel"></p>
+      <button id="btnResetAuto">Volver a empezar en el nivel Fácil</button>
     </div>
 
     <h3>Sonido y datos</h3>
     <label class="casilla"><input type="checkbox" id="chkSonido"> Sonidos de acierto y de fallo</label>
     <label class="casilla"><input type="checkbox" id="chkHistorial"> Guardar el historial de partidas en este dispositivo</label>
     <button id="btnVerHistorial">Ver historial</button>
-
-    <h3>Las figuras</h3>
-    <div class="soloGestos">
-      <div class="ajuste">
-        <label for="selEjPre">Cargar un ejercicio ya preparado</label>
-        <select id="selEjPre"></select>
-      </div>
-      <button id="btnCargarEj">Cargar en la lista</button>
-    </div>
-    <p class="nota">En cada partida salen figuras al azar de esta lista.</p>
-    <div id="listaFiguras"></div>
-    <button id="btnAnadir">Añadir figura</button>
 
     <p></p>
     <button id="btnCerrarMenu" class="principal">Guardar y jugar</button>
@@ -317,60 +264,88 @@ const EMOJIS = {
   Pinza: "🤏", Opos_Corazon: "👌", Opos_Anular: "👌", Opos_Menique: "👌",
   Cuenta_1: "1", Cuenta_2: "2", Cuenta_3: "3", Cuenta_4: "4", Cuenta_5: "5"
 };
-// Estos gestos se parecen mucho en el dibujo, así que su nombre se muestra siempre
-const TEXTO_SIEMPRE = new Set(["Opos_Corazon", "Opos_Anular", "Opos_Menique",
-  "Cuenta_1", "Cuenta_2", "Cuenta_3", "Cuenta_4", "Cuenta_5"]);
+// Solo estos gestos llevan etiqueta, para decir con qué dedo se hacen
+const ETIQUETAS = { Pinza: "Pulgar–índice", Opos_Corazon: "Pulgar–corazón", Opos_Anular: "Pulgar–anular", Opos_Menique: "Pulgar–meñique" };
 
-const FORMAS = {
-  circulo: "Círculo", cuadrado: "Cuadrado", triangulo: "Triángulo",
-  rombo: "Rombo", hexagono: "Hexágono", estrella: "Estrella"
-};
 const PALETA = ["#ff6b6b", "#4dabf7", "#ffd43b", "#b197fc", "#69db7c", "#ffa94d", "#f783ac", "#3bc9db", "#a9e34b"];
-const DEDOS = { "8": "índice", "12": "corazón", "16": "anular", "20": "meñique", "4": "pulgar" };
 
-// Ejercicios ya preparados: rellenan la lista de figuras de una vez
-const EJERCICIOS = {
-  serie:     { nombre: "Los 7 gestos de serie",
-               gestos: ["Closed_Fist", "Open_Palm", "Thumb_Up", "Thumb_Down", "Pointing_Up", "Victory", "ILoveYou"] },
-  abrir:     { nombre: "Abrir y cerrar la mano",
-               gestos: ["Closed_Fist", "Open_Palm"] },
-  contar:    { nombre: "Contar con los dedos (1 al 5)",
-               gestos: ["Cuenta_1", "Cuenta_2", "Cuenta_3", "Cuenta_4", "Cuenta_5"] },
-  oposicion: { nombre: "Oposición del pulgar (pinza y cada dedo)",
-               gestos: ["Pinza", "Opos_Corazon", "Opos_Anular", "Opos_Menique"] }
+// Programas ya preparados: los gestos que se practican, en orden.
+const PROGRAMAS = {
+  serie:     { nombre: "Los 7 gestos de serie", corto: "7 gestos",
+               gestos: ["Closed_Fist", "Open_Palm", "Thumb_Up", "Victory", "Pointing_Up", "ILoveYou", "Thumb_Down"],
+               descripcion: "Puño, mano abierta, pulgar arriba, victoria, señalar, «te quiero» y pulgar abajo." },
+  contar:    { nombre: "Contar con los dedos (1 al 5)", corto: "Contar dedos",
+               gestos: ["Cuenta_1", "Cuenta_2", "Cuenta_3", "Cuenta_4", "Cuenta_5"],
+               descripcion: "Enseñar con los dedos del 1 al 5." },
+  oposicion: { nombre: "Oposición del pulgar", corto: "Oposición",
+               gestos: ["Pinza", "Opos_Corazon", "Opos_Anular", "Opos_Menique"],
+               descripcion: "Pinza con el pulgar y el índice, y el pulgar tocando el corazón, el anular y el meñique." }
 };
+
+// Formas y colores de las figuras, en orden (el 1.er gesto del programa usa el 1.º, y así sucesivamente)
+const ESTILOS = [
+  { forma: "circulo",   color: PALETA[0] },   // rojo
+  { forma: "cuadrado",  color: PALETA[1] },   // azul
+  { forma: "triangulo", color: PALETA[2] },   // amarillo
+  { forma: "estrella",  color: PALETA[3] },   // violeta
+  { forma: "hexagono",  color: PALETA[4] },   // verde
+  { forma: "rombo",     color: PALETA[5] },   // naranja
+  { forma: "circulo",   color: PALETA[6] }    // rosa (solo lo usa el 7.º gesto de serie)
+];
+const COLOR_IGUALES = "#ffd43b";   // color de todas las figuras en el nivel difícil
 
 // Velocidad de las figuras que se mueven (fracción de la pantalla por segundo)
 const VELOCIDADES = { lenta: 0.08, media: 0.16, rapida: 0.26 };
 
-// Niveles de dificultad: cada uno ajusta varios valores de golpe
+// Niveles de dificultad. Aquí está TODO lo que cambia de un nivel a otro:
+//  simultaneas: figuras a la vez · duracion: segundos que dura cada figura
+//  mantener: milisegundos que hay que mantener el gesto · confianza: % mínimo de seguridad de MediaPipe
+//  posicion: "fija" o "azar" · movimiento: "quieta", "lenta", "media" o "rapida"
+//  estilo: "distintas" (cada gesto con su forma y color), "colores" (círculos de colores distintos)
+//          o "iguales" (todas las figuras idénticas) · tiempoTotal: segundos que dura la partida
 const NIVELES = {
-  facil:   { simultaneas: 1, total: 8,  duracion: 15, mantener: 300, confianza: 50, posicion: "fija", movimiento: "quieta" },
-  medio:   { simultaneas: 2, total: 10, duracion: 8,  mantener: 400, confianza: 60, posicion: "azar", movimiento: "quieta" },
-  dificil: { simultaneas: 3, total: 15, duracion: 5,  mantener: 600, confianza: 70, posicion: "azar", movimiento: "lenta" }
+  // Muy fácil: para quien al principio no consigue completar los gestos. Aquí basta con hacer una parte
+  // del movimiento ("parcial" = fracción del gesto que se da por buena) y se exige menos en todo lo demás.
+  muyfacil: { nombre: "Muy fácil", simultaneas: 1, duracion: 20, mantener: 200, confianza: 30,
+             posicion: "fija", movimiento: "quieta", estilo: "distintas", tiempoTotal: 30, parcial: 0.6 },
+  facil:   { nombre: "Fácil",   simultaneas: 1, duracion: 15, mantener: 300, confianza: 50,
+             posicion: "fija", movimiento: "quieta", estilo: "distintas", tiempoTotal: 30 },
+  medio:   { nombre: "Medio",   simultaneas: 2, duracion: 8,  mantener: 400, confianza: 60,
+             posicion: "azar", movimiento: "lenta", estilo: "colores", tiempoTotal: 30 },
+  dificil: { nombre: "Difícil", simultaneas: 3, duracion: 5,  mantener: 600, confianza: 70,
+             posicion: "azar", movimiento: "media", estilo: "iguales", tiempoTotal: 30 }
 };
-const CLAVES_NIVEL = new Set(Object.keys(NIVELES.medio));
+
+// ---------- Nivel automático ----------
+// Después de cada partida se mira cómo ha ido y se decide el nivel de la siguiente.
+// Todos los requisitos están aquí, juntos, para poder cambiarlos fácilmente.
+const ORDEN_NIVELES = ["muyfacil", "facil", "medio", "dificil"];
+const REGLAS = {
+  minimoFiguras: 5,     // una partida solo cuenta si han salido al menos tantas figuras (aciertos + fallos)
+  subirPrecision: 85,   // para SUBIR: % mínimo de aciertos en la partida...
+  subirRapidez: 0.5,    // ...y empezar el gesto, de media, en menos de esta fracción del tiempo de la figura
+  subirPartidas: 2,     // ...y que pase en tantas partidas SEGUIDAS
+  bajarMuyMala: 40,     // para BAJAR: menos de este % de aciertos en una sola partida...
+  bajarFlojo: 60,       // ...o menos de este % en...
+  bajarPartidas: 2,     // ...tantas partidas SEGUIDAS
+  sinAciertosFiguras: 1, // ...o NINGÚN acierto en toda la partida (aunque hayan salido pocas figuras)
+  subirCalidad: 90      // para salir de "Muy fácil": % medio del gesto que hay que hacer (calidad)
+};
+const CLAVE_ADAPT = "figuras-gestos-adaptacion";
+function leerAdaptacion() {
+  try { return JSON.parse(localStorage.getItem(CLAVE_ADAPT) || "{}"); } catch (e) { return {}; }
+}
+function guardarAdaptacion(datos) {
+  try { localStorage.setItem(CLAVE_ADAPT, JSON.stringify(datos)); } catch (e) {}
+}
+// Cada programa de gestos lleva su propio nivel automático; se empieza siempre en Fácil
+function nivelAuto(programa) {
+  const a = leerAdaptacion()[programa];
+  return (a && NIVELES[a.nivel]) ? a.nivel : "facil";
+}
 
 /* ---------- Configuración (se guarda en el dispositivo) ---------- */
-const CONFIG_INICIAL = {
-  nivel: "medio",
-  ejercicio: "gestos",      // "gestos" o "dedo"
-  modoPartida: "figuras",   // "figuras" o "tiempo"
-  tiempoTotal: 60,          // segundos (cuando la partida es por tiempo)
-  dedoToque: "8",           // punto de la mano que toca las figuras (8 = punta del índice)
-  mostrar: "todo",          // "todo", "dibujo" o "nada"
-  sonido: true,
-  guardarHistorial: true,
-  ...NIVELES.medio,
-  figuras: [
-    { forma: "circulo",   color: PALETA[0], gesto: "Closed_Fist" },
-    { forma: "cuadrado",  color: PALETA[1], gesto: "Open_Palm" },
-    { forma: "triangulo", color: PALETA[2], gesto: "Thumb_Up" },
-    { forma: "estrella",  color: PALETA[3], gesto: "Victory" },
-    { forma: "hexagono",  color: PALETA[4], gesto: "Pointing_Up" },
-    { forma: "rombo",     color: PALETA[5], gesto: "ILoveYou" }
-  ]
-};
+const CONFIG_INICIAL = { nivel: "auto", programa: "serie", sonido: true, guardarHistorial: true };
 
 function cargarConfig() {
   const base = structuredClone(CONFIG_INICIAL);
@@ -378,9 +353,13 @@ function cargarConfig() {
     const guardado = localStorage.getItem("figuras-gestos");
     if (guardado) {
       const o = JSON.parse(guardado);
-      const cfg = { ...base, ...o, figuras: (Array.isArray(o.figuras) && o.figuras.length) ? o.figuras : base.figuras };
-      if (!("nivel" in o)) cfg.nivel = "personalizado";   // ajustes de una versión anterior
-      return cfg;
+      // Nos quedamos solo con lo que sigue existiendo (así los ajustes de versiones antiguas no dan problemas)
+      return {
+        nivel: (o.nivel === "auto" || NIVELES[o.nivel]) ? o.nivel : base.nivel,
+        programa: PROGRAMAS[o.programa] ? o.programa : base.programa,
+        sonido: o.sonido ?? base.sonido,
+        guardarHistorial: o.guardarHistorial ?? base.guardarHistorial
+      };
     }
   } catch (e) { /* si falla, usamos la configuración inicial */ }
   return base;
@@ -389,6 +368,21 @@ function guardarConfig() {
   try { localStorage.setItem("figuras-gestos", JSON.stringify(config)); } catch (e) {}
 }
 let config = cargarConfig();
+
+// "nivel" son los valores del nivel elegido y "figuras" la lista de figuras (forma, color y gesto)
+// que resulta de combinar el programa de gestos con el estilo del nivel.
+let nivel, nivelClave, figuras;   // nivelClave: "facil", "medio" o "dificil" (el nivel que se está jugando)
+function aplicarConfig() {
+  nivelClave = config.nivel === "auto" ? nivelAuto(config.programa) : config.nivel;
+  nivel = NIVELES[nivelClave];
+  figuras = PROGRAMAS[config.programa].gestos.map((gesto, i) => {
+    const e = ESTILOS[i % ESTILOS.length];
+    if (nivel.estilo === "iguales") return { forma: "circulo", color: COLOR_IGUALES, gesto };
+    if (nivel.estilo === "colores") return { forma: "circulo", color: e.color, gesto };
+    return { forma: e.forma, color: e.color, gesto };
+  });
+}
+aplicarConfig();
 
 /* ---------- Referencias a los elementos de la página ---------- */
 const $ = (id) => document.getElementById(id);
@@ -427,25 +421,23 @@ function guardarPartida(registro) {
 
 /* ---------- Estado de lo que ve la cámara ---------- */
 const gestosActivos = new Map();   // gesto -> momento en que empezó a verse
-let dedoPunto = null;              // dónde está la punta del dedo en la pantalla
 let dispActual = { pos: [], radio: 50, ix0: 0, iw: 1, iy0: 0, ih: 1 };
 
 /* ---------- La partida ---------- */
 // fase: "cuenta" (3, 2, 1), "jugando", "pausa" o "fin"
 // slots: los huecos de la pantalla; cada uno está vacío (null) o tiene una figura
 let juego = { fase: "fin", slots: [], libreDesde: [], creadas: 0, aciertos: 0, fallos: 0,
-              tiempos: [], inicioCuenta: 0, t0: 0, finTiempo: 0, ultimo: 0, alcance: null };
+              tiempos: [], calidades: [], inicioCuenta: 0, t0: 0, finTiempo: 0, ultimo: 0 };
 let faseAntes = "jugando", pausadoEn = 0;
 
 function nuevaPartida() {
-  const n = Math.min(6, Math.max(1, config.simultaneas));
+  const n = Math.min(6, Math.max(1, nivel.simultaneas));
   juego = {
     fase: "cuenta",
     slots: Array(n).fill(null),
     libreDesde: Array(n).fill(0),
-    creadas: 0, aciertos: 0, fallos: 0, tiempos: [],
-    inicioCuenta: performance.now(), t0: 0, finTiempo: 0, ultimo: performance.now(),
-    alcance: null
+    creadas: 0, aciertos: 0, fallos: 0, tiempos: [], calidades: [],
+    inicioCuenta: performance.now(), t0: 0, finTiempo: 0, ultimo: performance.now()
   };
   $("fin").classList.add("oculto");
 }
@@ -462,7 +454,7 @@ function reanudar() {
   const dt = performance.now() - pausadoEn;
   juego.inicioCuenta += dt; juego.t0 += dt; juego.finTiempo += dt;
   juego.libreDesde = juego.libreDesde.map((t) => t + dt);
-  juego.slots.forEach((s) => { if (s) { s.nacida += dt; if (s.dentroDesde) s.dentroDesde += dt; } });
+  juego.slots.forEach((s) => { if (s) s.nacida += dt; });
   juego.ultimo = performance.now();
   juego.fase = faseAntes;
 }
@@ -520,28 +512,22 @@ function mover(s, dt) {
 
 // Elige una figura nueva al azar de la lista
 function crearFigura(ahora, hueco) {
-  const dedo = config.ejercicio === "dedo";
-  const todas = config.figuras.map((f, k) => k);
+  const todas = figuras.map((f, k) => k);
   const usadas = juego.slots.filter(Boolean).map((s) => s.idx);
-  let candidatas;
-  if (dedo) {
-    candidatas = todas.filter((k) => !usadas.includes(k));
-  } else {
-    // Evitamos repetir un gesto que ya está en pantalla (o que estás haciendo ahora mismo)
-    const enUso = usadas.map((k) => config.figuras[k].gesto);
-    gestosActivos.forEach((_, g) => enUso.push(g));
-    candidatas = todas.filter((k) => !enUso.includes(config.figuras[k].gesto));
-  }
+  // Evitamos repetir un gesto que ya está en pantalla (o que estás haciendo ahora mismo)
+  const enUso = usadas.map((k) => figuras[k].gesto);
+  gestosActivos.forEach((_, g) => enUso.push(g));
+  let candidatas = todas.filter((k) => !enUso.includes(figuras[k].gesto));
   if (candidatas.length === 0) candidatas = todas;
   const idx = candidatas[Math.floor(Math.random() * candidatas.length)];
 
   const s = { idx, slot: hueco, nacida: ahora, alfa: 0, meta: 1, resultado: null,
-              libre: false, nx: 0, ny: 0, vx: 0, vy: 0, dentroDesde: null };
-  if (config.posicion === "azar" || config.movimiento !== "quieta") {
+              libre: false, nx: 0, ny: 0, vx: 0, vy: 0 };
+  if (nivel.posicion === "azar" || nivel.movimiento !== "quieta") {
     s.libre = true;
     colocarAlAzar(s);
-    if (config.movimiento !== "quieta") {
-      const angulo = Math.random() * 2 * Math.PI, v = VELOCIDADES[config.movimiento] || 0.1;
+    if (nivel.movimiento !== "quieta") {
+      const angulo = Math.random() * 2 * Math.PI, v = VELOCIDADES[nivel.movimiento] || 0.1;
       s.vx = Math.cos(angulo) * v; s.vy = Math.sin(angulo) * v;
     }
   }
@@ -550,11 +536,12 @@ function crearFigura(ahora, hueco) {
 }
 
 // Una figura se resuelve cuando aciertas o se acaba su tiempo
-function resolver(s, acierto, inicio) {
+function resolver(s, acierto, inicio, calidad = 1) {
   s.meta = 0;
   s.resultado = acierto ? "ok" : "fallo";
   if (acierto) {
     juego.aciertos++;
+    juego.calidades.push(calidad);                        // qué parte del gesto se hizo (1 = completo)
     juego.tiempos.push(Math.max(0, inicio - s.nacida));   // lo que tardaste en empezar
     sonido("ok");
   } else {
@@ -571,13 +558,12 @@ function terminar() {
 function actualizarJuego(ahora) {
   const dt = Math.min(0.1, Math.max(0, (ahora - juego.ultimo) / 1000));
   juego.ultimo = ahora;
-  const porTiempo = config.modoPartida === "tiempo";
 
   if (juego.fase === "cuenta") {
     if (ahora - juego.inicioCuenta >= 3000) {
       juego.fase = "jugando";
       juego.t0 = ahora;
-      juego.finTiempo = ahora + config.tiempoTotal * 1000;
+      juego.finTiempo = ahora + nivel.tiempoTotal * 1000;
       // Las figuras van saliendo una detrás de otra, no todas de golpe
       juego.libreDesde = juego.slots.map((_, i) => ahora + i * 500);
     }
@@ -585,22 +571,21 @@ function actualizarJuego(ahora) {
   }
   if (juego.fase !== "jugando") return;
 
-  // Partida por tiempo: cuando se acaba, termina
-  if (porTiempo && ahora >= juego.finTiempo) {
+  // La partida solo termina cuando se acaba el tiempo
+  if (ahora >= juego.finTiempo) {
     juego.slots = juego.slots.map(() => null);
     terminar();
     return;
   }
 
-  const puedeCrear = () => porTiempo || juego.creadas < config.total;
   juego.slots.forEach((s, i) => {
     if (!s) {
-      // Hueco vacío: sacamos una figura nueva si toca y ha pasado la pausa
-      if (puedeCrear() && ahora >= juego.libreDesde[i]) juego.slots[i] = crearFigura(ahora, i);
+      // Hueco vacío: sacamos una figura nueva si ha pasado la pausa
+      if (ahora >= juego.libreDesde[i]) juego.slots[i] = crearFigura(ahora, i);
       return;
     }
     if (s.meta === 1) {
-      if (config.duracion > 0 && ahora - s.nacida >= config.duracion * 1000) resolver(s, false, 0);  // se acabó su tiempo
+      if (nivel.duracion > 0 && ahora - s.nacida >= nivel.duracion * 1000) resolver(s, false, 0);  // se acabó su tiempo
       else if (s.vx || s.vy) mover(s, dt);
     }
     // Aparece o se desvanece poco a poco
@@ -610,9 +595,50 @@ function actualizarJuego(ahora) {
       juego.libreDesde[i] = ahora + 600;
     }
   });
+}
 
-  // Partida por número de figuras: termina cuando han salido todas y ya no queda ninguna
-  if (!porTiempo && juego.creadas >= config.total && juego.slots.every((s) => !s)) terminar();
+// Mira cómo ha ido la partida y decide el nivel de la siguiente (solo en modo automático).
+// Devuelve el texto que se enseña en la pantalla final.
+function evaluarAdaptacion(r) {
+  if (config.nivel !== "auto") return "";
+  const todos = leerAdaptacion();
+  const a = todos[config.programa] || { nivel: "facil", buenas: 0, flojas: 0 };
+  const total = r.ac + r.fa;
+  const suficiente = total >= REGLAS.minimoFiguras;
+  // Sin ningún acierto basta con pocas figuras: así quien no consigue nada baja de nivel
+  const sinAciertos = r.ac === 0 && total >= REGLAS.sinAciertosFiguras;
+  let frase = "";
+
+  if (suficiente || sinAciertos) {
+    const precision = 100 * r.ac / total;
+    const rapida = r.tm !== null && r.tm <= REGLAS.subirRapidez * nivel.duracion * 1000;
+    // En "Muy fácil" también hace falta que el gesto salga casi completo para poder subir
+    const gestoBien = !nivel.parcial || (r.cal !== null && r.cal >= REGLAS.subirCalidad);
+    const buena = suficiente && precision >= REGLAS.subirPrecision && rapida && gestoBien;
+    const floja = precision < REGLAS.bajarFlojo;
+    const muyMala = precision < REGLAS.bajarMuyMala;
+    a.buenas = buena ? a.buenas + 1 : 0;                    // partidas buenas seguidas
+    a.flojas = floja ? a.flojas + 1 : 0;                    // partidas flojas seguidas
+
+    let i = ORDEN_NIVELES.indexOf(a.nivel);
+    if (a.buenas >= REGLAS.subirPartidas && i < ORDEN_NIVELES.length - 1) {
+      i++; a.buenas = 0; a.flojas = 0;
+      frase = `¡Muy bien! Varias partidas seguidas con muchos aciertos y buen ritmo: subes de nivel.`;
+    } else if (muyMala || a.flojas >= REGLAS.bajarPartidas) {
+      if (i > 0) {
+        i--; a.buenas = 0; a.flojas = 0;
+        frase = `Vamos a practicar con más calma: bajamos un nivel.`;
+      } else {
+        frase = `Sigue practicando a tu ritmo: lo importante es intentarlo.`;   // ya está en el nivel más suave
+      }
+    }
+    a.nivel = ORDEN_NIVELES[i];
+    todos[config.programa] = a;
+    guardarAdaptacion(todos);
+  } else {
+    frase = "Han salido pocas figuras para valorar la partida, así que el nivel se queda igual.";
+  }
+  return `<p>${frase}</p><p><b>Nivel de la próxima partida: ${NIVELES[nivelAuto(config.programa)].nombre}</b> (automático)</p>`;
 }
 
 function mostrarFin() {
@@ -620,29 +646,26 @@ function mostrarFin() {
   const dur = Math.round((performance.now() - juego.t0) / 1000);
   const media = juego.tiempos.length
     ? juego.tiempos.reduce((a, b) => a + b, 0) / juego.tiempos.length : null;
-  const dedo = config.ejercicio === "dedo";
-  const al = juego.alcance;
-  const ancho = (dedo && al) ? Math.round((al.maxx - al.minx) * 100) : null;
-  const alto  = (dedo && al) ? Math.round((al.maxy - al.miny) * 100) : null;
+  // Calidad del gesto: qué parte del movimiento se hizo, de media (solo en los niveles donde basta con una parte)
+  const cal = (nivel.parcial && juego.calidades.length)
+    ? Math.round(100 * juego.calidades.reduce((a, b) => a + b, 0) / juego.calidades.length) : null;
+  const registro = { f: new Date().toISOString(), prog: config.programa, nivel: nivelClave,
+                     auto: config.nivel === "auto", ac: juego.aciertos, fa: juego.fallos,
+                     tm: media === null ? null : Math.round(media), cal, dur };
 
-  let html = config.modoPartida === "tiempo"
-    ? `<p><b>${juego.aciertos}</b> aciertos en ${config.tiempoTotal} segundos</p>`
-    : `<p><b>${juego.aciertos}</b> aciertos de ${total} figuras</p>`;
+  let html = `<p><b>${juego.aciertos}</b> aciertos y <b>${juego.fallos}</b> fallos en ${nivel.tiempoTotal} segundos</p>`;
   if (media !== null) {
-    html += `<p>${dedo ? "Tiempo medio en llegar a la figura" : "Tiempo medio hasta empezar el gesto"}: <b>${(media / 1000).toFixed(1).replace(".", ",")} s</b></p>`;
+    html += `<p>Tiempo medio hasta empezar el gesto: <b>${(media / 1000).toFixed(1).replace(".", ",")} s</b></p>`;
   }
-  if (ancho !== null) {
-    html += `<p>Alcance de tu mano: <b>${ancho} %</b> del ancho y <b>${alto} %</b> del alto de la imagen</p>`;
-    html += `<p class="pequena">Compara solo partidas hechas a la misma distancia de la cámara.</p>`;
+  if (cal !== null) {
+    html += `<p>Parte del gesto que has conseguido, de media: <b>${cal} %</b></p>`;
   }
+  html += `<p class="pequena">${PROGRAMAS[config.programa].nombre} · Nivel ${nivel.nombre}${config.nivel === "auto" ? " (automático)" : ""}</p>`;
+  html += evaluarAdaptacion(registro);
   $("resultado").innerHTML = html;
   $("fin").classList.remove("oculto");
 
-  if (total > 0) {
-    guardarPartida({ f: new Date().toISOString(), ej: config.ejercicio, modo: config.modoPartida,
-                     nivel: config.nivel, ac: juego.aciertos, fa: juego.fallos,
-                     tm: media === null ? null : Math.round(media), dur, ah: ancho, av: alto });
-  }
+  if (total > 0) guardarPartida(registro);
 }
 
 /* ---------- Dibujar ---------- */
@@ -682,8 +705,7 @@ function rectRedondo(x, y, w, h, radio) {
 }
 
 function dibujarFigura(s, c, r, ahora) {
-  const fig = config.figuras[s.idx];
-  const dedo = config.ejercicio === "dedo";
+  const fig = figuras[s.idx];
   ctx.globalAlpha = s.alfa;
 
   // La figura
@@ -695,7 +717,7 @@ function dibujarFigura(s, c, r, ahora) {
   ctx.stroke();
 
   // El dibujo del gesto, dentro de la figura
-  if (!dedo && config.mostrar !== "nada") {
+  if (EMOJIS[fig.gesto]) {
     ctx.font = `${Math.round(r * 0.9)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillStyle = "#000";
@@ -703,10 +725,9 @@ function dibujarFigura(s, c, r, ahora) {
   }
 
   // El nombre del gesto, debajo de la figura
-  const verNombre = !dedo && (config.mostrar === "todo" ||
-                    (config.mostrar === "dibujo" && TEXTO_SIEMPRE.has(fig.gesto)));
+  const verNombre = ETIQUETAS[fig.gesto] !== undefined;
   if (verNombre) {
-    const texto = CORTOS[fig.gesto] || "";
+    const texto = ETIQUETAS[fig.gesto];
     const tam = Math.max(15, Math.round(r * 0.3));
     ctx.font = `600 ${tam}px system-ui, sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -720,18 +741,16 @@ function dibujarFigura(s, c, r, ahora) {
 
   if (s.meta === 1) {
     // Anillo blanco: el tiempo que le queda a la figura
-    if (config.duracion > 0) {
-      const resto = Math.max(0, 1 - (ahora - s.nacida) / (config.duracion * 1000));
+    if (nivel.duracion > 0) {
+      const resto = Math.max(0, 1 - (ahora - s.nacida) / (nivel.duracion * 1000));
       ctx.beginPath();
       ctx.arc(c.x, c.y, r * 1.3, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * resto);
       ctx.lineWidth = 5; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.stroke();
     }
-    // Anillo verde: lo que llevas mantenido el gesto correcto (o el dedo sobre la figura)
-    let inicio = null;
-    if (dedo) inicio = s.dentroDesde;
-    else { const d = gestosActivos.get(fig.gesto); if (d !== undefined && d >= s.nacida) inicio = d; }
-    if (inicio !== null) {
-      const avance = Math.min(1, (ahora - inicio) / Math.max(1, config.mantener));
+    // Anillo verde: lo que llevas mantenido el gesto correcto
+    const inicio = gestosActivos.get(fig.gesto);
+    if (inicio !== undefined && inicio >= s.nacida) {
+      const avance = Math.min(1, (ahora - inicio) / Math.max(1, nivel.mantener));
       ctx.beginPath();
       ctx.arc(c.x, c.y, r * 1.15, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * avance);
       ctx.lineWidth = 8; ctx.strokeStyle = "#2fbf71"; ctx.stroke();
@@ -756,14 +775,6 @@ function dibujar(ahora) {
     juego.slots.forEach((s) => {
       if (s && s.alfa > 0.01) dibujarFigura(s, centroFigura(s, dispActual), dispActual.radio, ahora);
     });
-  }
-
-  // El punto que sigue a tu dedo (solo en el ejercicio de llevar el dedo)
-  if (config.ejercicio === "dedo" && dedoPunto) {
-    ctx.beginPath();
-    ctx.arc(dedoPunto.x, dedoPunto.y, 16, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(53,208,186,.9)"; ctx.fill();
-    ctx.lineWidth = 4; ctx.strokeStyle = "#ffffff"; ctx.stroke();
   }
 }
 
@@ -803,64 +814,98 @@ function gestosPropios(lm) {
   return salida;
 }
 
-// Pasa un punto de la imagen de la cámara a un punto de la pantalla
-// (la imagen está recortada para llenar la pantalla y se ve como un espejo)
-function pantallaDesdePunto(p) {
-  const W = window.innerWidth, H = window.innerHeight;
-  const vw = video.videoWidth || 640, vh = video.videoHeight || 480;
-  const k = Math.max(W / vw, H / vh);
-  const ox = (W - vw * k) / 2, oy = (H - vh * k) / 2;
-  return { x: W - (ox + p.x * vw * k), y: oy + p.y * vh * k };
+// ---------- Qué parte del gesto se está haciendo (para el nivel «Muy fácil») ----------
+// Cada dedo tiene una "extensión" de 0 (doblado del todo) a 1 (estirado del todo).
+// Cada gesto pide una extensión a cada dedo [pulgar, índice, corazón, anular, meñique]; null = da igual.
+const FORMA_DEDOS = {
+  Closed_Fist: [null, 0, 0, 0, 0],
+  Open_Palm:   [1, 1, 1, 1, 1],
+  Thumb_Up:    [1, 0, 0, 0, 0],
+  Thumb_Down:  [1, 0, 0, 0, 0],
+  Pointing_Up: [null, 1, 0, 0, 0],
+  Victory:     [null, 1, 1, 0, 0],
+  ILoveYou:    [1, 1, 0, 0, 1],
+  Cuenta_1:    [null, 1, 0, 0, 0],
+  Cuenta_2:    [null, 1, 1, 0, 0],
+  Cuenta_3:    [null, 1, 1, 1, 0],
+  Cuenta_4:    [0, 1, 1, 1, 1],
+  Cuenta_5:    [1, 1, 1, 1, 1]
+};
+
+// Devuelve, para cada gesto, qué parte (de 0 a 1) se está haciendo ahora.
+// Para dar el gesto por bueno "en parte", TODOS los dedos tienen que haber hecho al menos esa parte del movimiento
+// (se mira el dedo que más falla, no la media: así un dedo que falta no pasa desapercibido).
+function calcularProgresos(lm) {
+  const w = video.videoWidth || 640, h = video.videoHeight || 480;
+  const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * w, (lm[a].y - lm[b].y) * h);
+  const tam = d(0, 9);
+  if (tam < 1) return {};
+  const lim = (x) => Math.min(1, Math.max(0, x));
+
+  // Extensión de cada dedo: lo lejos que queda la punta de la muñeca, comparado con la base del dedo
+  const ext = [
+    lim((d(4, 17) / tam - 0.6) / 0.8),            // pulgar: lo lejos que queda de la base del meñique
+    lim((d(0, 8) / d(0, 5) - 0.8) / 0.8),         // índice
+    lim((d(0, 12) / d(0, 9) - 0.8) / 0.8),        // corazón
+    lim((d(0, 16) / d(0, 13) - 0.8) / 0.8),       // anular
+    lim((d(0, 20) / d(0, 17) - 0.8) / 0.8)        // meñique
+  ];
+
+  const salida = {};
+  for (const [gesto, objetivo] of Object.entries(FORMA_DEDOS)) {
+    let peor = 0;
+    objetivo.forEach((t, i) => { if (t !== null) peor = Math.max(peor, Math.abs(ext[i] - t)); });
+    salida[gesto] = 1 - peor;
+  }
+  // Orientación: pulgar hacia arriba o hacia abajo, y dedo señalando hacia arriba
+  if (!((lm[0].y - lm[4].y) * h > 0.4 * tam)) salida.Thumb_Up = 0;
+  if (!((lm[4].y - lm[0].y) * h > 0.4 * tam)) salida.Thumb_Down = 0;
+  if (!((lm[0].y - lm[8].y) * h > 1.0 * tam)) salida.Pointing_Up = 0;
+
+  // Pinza y oposición: cuánto se ha acercado la punta del pulgar a la punta del dedo más cercano.
+  // 1 = se tocan (a menos de 0,3 veces el tamaño de la mano); 0 = a más de 0,9 veces.
+  const toques = [["Pinza", 8], ["Opos_Corazon", 12], ["Opos_Anular", 16], ["Opos_Menique", 20]]
+    .map(([g, i]) => [g, d(4, i), i]);
+  toques.forEach(([g]) => { salida[g] = 0; });
+  const [g, dist, punta] = toques.reduce((a, b) => (a[1] < b[1] ? a : b));
+  if (d(0, punta) > 0.75 * tam) salida[g] = lim(1 - (dist / tam - 0.3) / 0.6);   // el dedo tocado tiene que estar estirado, no pegado a la palma
+  return salida;
 }
 
 /* ---------- Procesar lo que ve la cámara ---------- */
 let reconocedor = null;
 let ultimoFotograma = -1;
 
-function procesar(resultado, ahora) {
-  const dedo = config.ejercicio === "dedo";
+let estrictos = new Set();   // gestos que se dan por completos (MediaPipe o nuestras medidas)
+let progresos = {};          // qué parte (de 0 a 1) de cada gesto está haciendo ahora la mano
 
-  // 1) Qué gestos se ven ahora mismo
+function procesar(resultado, ahora) {
+  // 1) Gestos completos
   const vistos = new Set();
   if (resultado.gestures.length > 0) {
     const mejor = resultado.gestures[0][0];
-    if (mejor.categoryName !== "None" && mejor.score * 100 >= config.confianza) vistos.add(mejor.categoryName);
+    if (mejor.categoryName !== "None" && mejor.score * 100 >= nivel.confianza) vistos.add(mejor.categoryName);
   }
   if (resultado.landmarks.length > 0) gestosPropios(resultado.landmarks[0]).forEach((g) => vistos.add(g));
   // Con el puño cerrado el pulgar queda pegado a los dedos: no lo confundimos con una pinza
   if (vistos.has("Closed_Fist")) ["Pinza", "Opos_Corazon", "Opos_Anular", "Opos_Menique"].forEach((g) => vistos.delete(g));
+  estrictos = new Set(vistos);
+
+  // 2) Gestos hechos solo en parte (únicamente en los niveles donde basta con una parte del movimiento)
+  progresos = resultado.landmarks.length > 0 ? calcularProgresos(resultado.landmarks[0]) : {};
+  if (nivel.parcial) {
+    for (const [g, p] of Object.entries(progresos)) if (p >= nivel.parcial) vistos.add(g);
+  }
+
   for (const g of [...gestosActivos.keys()]) if (!vistos.has(g)) gestosActivos.delete(g);
   vistos.forEach((g) => { if (!gestosActivos.has(g)) gestosActivos.set(g, ahora); });
 
-  // 2) Dónde está la punta del dedo
-  dedoPunto = null;
-  let punto = null;
-  if (resultado.landmarks.length > 0) {
-    punto = resultado.landmarks[0][Number(config.dedoToque)];
-    dedoPunto = pantallaDesdePunto(punto);
-  }
-
   // 3) Lo que se muestra arriba a la izquierda
-  if (dedo) {
-    $("estado").textContent = dedoPunto ? "Mano detectada" : "No veo la mano";
-  } else {
-    const nombres = [...gestosActivos.keys()].map((g) => CORTOS[g]);
-    $("estado").textContent = "Gesto: " + (nombres.length ? nombres.join(" + ") : "ninguno");
-  }
-
-  if (juego.fase !== "jugando") return;
+  const nombres = [...gestosActivos.keys()].map((g) => CORTOS[g] + (estrictos.has(g) ? "" : " (parcial)"));
+  $("estado").textContent = "Gesto: " + (nombres.length ? nombres.join(" + ") : "ninguno");
 
   // 4) ¿Se ha conseguido alguna figura?
-  if (dedo) {
-    if (punto) {
-      const a = juego.alcance || (juego.alcance = { minx: punto.x, maxx: punto.x, miny: punto.y, maxy: punto.y });
-      a.minx = Math.min(a.minx, punto.x); a.maxx = Math.max(a.maxx, punto.x);
-      a.miny = Math.min(a.miny, punto.y); a.maxy = Math.max(a.maxy, punto.y);
-    }
-    comprobarDedo(ahora);
-  } else {
-    comprobarGestos(ahora);
-  }
+  if (juego.fase === "jugando") comprobarGestos(ahora);
 }
 
 // Si mantienes un gesto el tiempo suficiente, aciertas las figuras que lo piden.
@@ -868,38 +913,21 @@ function procesar(resultado, ahora) {
 function comprobarGestos(ahora) {
   juego.slots.forEach((s) => {
     if (!s || s.meta !== 1) return;
-    const desde = gestosActivos.get(config.figuras[s.idx].gesto);
-    if (desde !== undefined && desde >= s.nacida && ahora - desde >= config.mantener) resolver(s, true, desde);
-  });
-}
-
-// Si mantienes el punto sobre una figura el tiempo suficiente, la aciertas
-function comprobarDedo(ahora) {
-  if (!dedoPunto) { juego.slots.forEach((s) => { if (s) s.dentroDesde = null; }); return; }
-  const alcanzar = dispActual.radio * 1.1;
-  juego.slots.forEach((s) => {
-    if (!s || s.meta !== 1) return;
-    const c = centroFigura(s, dispActual);
-    if (Math.hypot(dedoPunto.x - c.x, dedoPunto.y - c.y) <= alcanzar) {
-      if (s.dentroDesde === null) s.dentroDesde = ahora;
-      if (ahora - s.dentroDesde >= config.mantener) resolver(s, true, s.dentroDesde);
-    } else {
-      s.dentroDesde = null;
+    const gesto = figuras[s.idx].gesto;
+    const desde = gestosActivos.get(gesto);
+    if (desde !== undefined && desde >= s.nacida && ahora - desde >= nivel.mantener) {
+      // Calidad: 1 si el gesto está completo; si no, la parte que se está haciendo
+      const calidad = estrictos.has(gesto) ? 1 : Math.min(1, progresos[gesto] ?? 0);
+      resolver(s, true, desde, calidad);
     }
   });
 }
 
 function actualizarMarcador(ahora) {
-  let t = `Aciertos ${juego.aciertos} · Fallos ${juego.fallos}`;
-  if (config.modoPartida === "tiempo") {
-    const referencia = juego.fase === "pausa" ? pausadoEn : ahora;
-    const resto = (juego.fase === "jugando" || juego.fase === "pausa")
-      ? Math.max(0, Math.ceil((juego.finTiempo - referencia) / 1000)) : config.tiempoTotal;
-    t += ` · ${resto} s`;
-  } else {
-    t += ` · Figura ${Math.min(juego.creadas, config.total)} de ${config.total}`;
-  }
-  $("marcador").textContent = t;
+  const referencia = juego.fase === "pausa" ? pausadoEn : ahora;
+  const resto = (juego.fase === "jugando" || juego.fase === "pausa")
+    ? Math.max(0, Math.ceil((juego.finTiempo - referencia) / 1000)) : nivel.tiempoTotal;
+  $("marcador").textContent = `Aciertos ${juego.aciertos} · Fallos ${juego.fallos} · ${resto} s`;
 }
 
 // Este bucle se repite sin parar: mira la cámara, reconoce, actualiza la partida y dibuja
@@ -954,7 +982,7 @@ async function empezar() {
     await video.play();
 
     $("inicio").classList.add("oculto");
-    nuevaPartida();
+    mostrarEleccion();
     bucle();
   } catch (error) {
     $("btnEmpezar").disabled = false;
@@ -967,20 +995,14 @@ $("btnEmpezar").addEventListener("click", empezar);
 
 /* ---------- Explicación del juego (cambia según el ejercicio elegido) ---------- */
 function pintarReglas() {
-  const dedo = config.ejercicio === "dedo";
-  const nombreDedo = DEDOS[config.dedoToque] || "índice";
-  const pasos = ["Aparecen figuras de colores en la pantalla."];
-  if (dedo) {
-    pasos.push(`Mueve la punta del dedo ${nombreDedo}: verás un punto que la sigue en la pantalla. Llévalo hasta una figura.`);
-    pasos.push("Mantén el punto sobre la figura un momento: desaparece y sumas un acierto.");
-  } else {
-    pasos.push("Cada figura te muestra el gesto que tienes que hacer con la mano.");
-    pasos.push("Haz ese gesto delante de la cámara y mantenlo un momento: la figura desaparece y sumas un acierto.");
-  }
-  pasos.push("Si tardas demasiado, la figura se va sola y cuenta como fallo.");
-  pasos.push(config.modoPartida === "tiempo"
-    ? `La partida dura ${config.tiempoTotal} segundos: consigue todos los aciertos que puedas.`
-    : `La partida termina después de ${config.total} figuras.`);
+  const pasos = [
+    "Aparecen figuras en la pantalla.",
+    "Cada figura te muestra el gesto que tienes que hacer con la mano.",
+    "Haz ese gesto delante de la cámara y mantenlo un momento: la figura desaparece y sumas un acierto.",
+    "Si tardas demasiado, la figura se va sola y cuenta como fallo.",
+    `La partida dura ${nivel.tiempoTotal} segundos: consigue todos los aciertos que puedas.`
+  ];
+  if (nivel.parcial) pasos.splice(3, 0, "En este nivel no hace falta completar el gesto: basta con hacer una buena parte del movimiento.");
   const html = pasos.map((t) => `<li>${t}</li>`).join("");
   $("reglas").innerHTML = html;
   $("reglasAyuda").innerHTML = html;
@@ -989,8 +1011,75 @@ pintarReglas();
 
 $("btnAyuda").addEventListener("click", () => { pausar(); $("ayuda").classList.remove("oculto"); });
 $("btnCerrarAyuda").addEventListener("click", () => { $("ayuda").classList.add("oculto"); reanudar(); });
-$("btnReiniciar").addEventListener("click", nuevaPartida);
-$("btnOtraVez").addEventListener("click", nuevaPartida);
+// Prepara una partida nueva con el programa y el nivel vigentes (si el nivel es automático, el que toque)
+function empezarPartida() {
+  aplicarConfig();
+  pintarReglas();
+  $("nivelInfo").textContent = `Nivel ${nivel.nombre}` + (config.nivel === "auto" ? " (automático)" : "");
+  guardarUltima();      // para poder "continuar donde lo dejaste" la próxima vez
+  nuevaPartida();
+}
+$("btnReiniciar").addEventListener("click", empezarPartida);
+$("btnOtraVez").addEventListener("click", empezarPartida);
+
+/* ---------- Elegir con qué jugar y continuar donde lo dejaste ---------- */
+const CLAVE_ULTIMA = "figuras-gestos-ultima";
+function leerUltima() {
+  try {
+    const u = JSON.parse(localStorage.getItem(CLAVE_ULTIMA) || "null");
+    return (u && PROGRAMAS[u.prog] && (u.nivel === "auto" || NIVELES[u.nivel])) ? u : null;
+  } catch (e) { return null; }
+}
+function guardarUltima() {
+  try {
+    localStorage.setItem(CLAVE_ULTIMA, JSON.stringify({ f: new Date().toISOString(), prog: config.programa, nivel: config.nivel }));
+  } catch (e) {}
+}
+function descripcionSesion(prog, nivelCfg) {
+  const n = nivelCfg === "auto"
+    ? `Nivel ${NIVELES[nivelAuto(prog)].nombre} (automático)` : `Nivel ${NIVELES[nivelCfg].nombre}`;
+  return `${PROGRAMAS[prog].nombre} · ${n}`;
+}
+function pintarNotaIni() {
+  const prog = $("selProgramaIni").value, niv = $("selNivelIni").value;
+  $("notaNivelIni").textContent = niv === "auto"
+    ? `El nivel se ajusta solo según cómo te vaya. En este programa empiezas ahora en nivel ${NIVELES[nivelAuto(prog)].nombre}.`
+    : textoNivel(niv);
+}
+function mostrarEleccion() {
+  $("selProgramaIni").innerHTML = Object.entries(PROGRAMAS)
+    .map(([clave, pr]) => `<option value="${clave}">${pr.nombre}</option>`).join("");
+  $("selNivelIni").innerHTML = `<option value="auto">Automática (recomendada)</option>` +
+    Object.entries(NIVELES).map(([clave, v]) => `<option value="${clave}">${v.nombre}</option>`).join("");
+  $("selProgramaIni").value = config.programa;
+  $("selNivelIni").value = config.nivel;
+  pintarNotaIni();
+
+  // Si hay una sesión anterior, se ofrece continuar con ella
+  const u = leerUltima();
+  $("bloqueContinuar").classList.toggle("oculto", !u);
+  $("otraCosa").classList.toggle("oculto", !u);
+  if (u) {
+    const fecha = new Date(u.f).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
+    $("textoContinuar").textContent = `${descripcionSesion(u.prog, u.nivel)} · última vez: ${fecha}`;
+  }
+  $("eleccion").classList.remove("oculto");
+}
+$("selProgramaIni").addEventListener("change", pintarNotaIni);
+$("selNivelIni").addEventListener("change", pintarNotaIni);
+$("btnJugar").addEventListener("click", () => {
+  config.programa = $("selProgramaIni").value;
+  config.nivel = $("selNivelIni").value;
+  guardarConfig();
+  $("eleccion").classList.add("oculto");
+  empezarPartida();
+});
+$("btnContinuar").addEventListener("click", () => {
+  const u = leerUltima();
+  if (u) { config.programa = u.prog; config.nivel = u.nivel; guardarConfig(); }
+  $("eleccion").classList.add("oculto");
+  empezarPartida();
+});
 
 /* ---------- Historial (pantalla) ---------- */
 function formatoSegundos(ms) { return (ms / 1000).toFixed(1).replace(".", ",") + " s"; }
@@ -1018,11 +1107,12 @@ function abrirHistorial() {
   } else {
     const filas = h.slice().reverse().slice(0, 60).map((r) => {
       const fecha = new Date(r.f).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" });
-      const ej = (r.ej === "dedo" ? "Dedo" : "Gestos") + (r.modo === "tiempo" ? ` · ${r.dur} s` : "");
+      const prog = (PROGRAMAS[r.prog] || {}).corto || "–";        // las partidas antiguas no tienen programa
+      const niv = ((NIVELES[r.nivel] || {}).nombre || "–") + (r.auto ? " (auto)" : "");
       const pct = Math.round(100 * r.ac / Math.max(1, r.ac + r.fa));
-      return `<tr><td>${fecha}</td><td>${ej}</td><td>${r.ac}/${r.ac + r.fa} (${pct} %)</td><td>${r.tm != null ? formatoSegundos(r.tm) : "–"}</td></tr>`;
+      return `<tr><td>${fecha}</td><td>${prog}</td><td>${niv}</td><td>${r.ac}/${r.ac + r.fa} (${pct} %)</td><td>${r.tm != null ? formatoSegundos(r.tm) : "–"}</td><td>${r.cal != null ? r.cal + " %" : "–"}</td></tr>`;
     }).join("");
-    html = grafico(h) + `<table><thead><tr><th>Fecha</th><th>Ejercicio</th><th>Aciertos</th><th>T. medio</th></tr></thead><tbody>${filas}</tbody></table>`;
+    html = grafico(h) + `<table><thead><tr><th>Fecha</th><th>Gestos</th><th>Nivel</th><th>Aciertos</th><th>T. medio</th><th>Gesto</th></tr></thead><tbody>${filas}</tbody></table>`;
   }
   $("histContenido").innerHTML = html;
   $("historial").classList.remove("oculto");
@@ -1030,10 +1120,10 @@ function abrirHistorial() {
 
 function descargarCsv() {
   const h = leerHistorial();
-  const filas = [["fecha", "ejercicio", "modo", "nivel", "aciertos", "fallos", "porcentaje", "tiempo_medio_s", "duracion_s", "alcance_ancho_pct", "alcance_alto_pct"]];
-  h.forEach((r) => filas.push([r.f, r.ej, r.modo, r.nivel, r.ac, r.fa,
+  const filas = [["fecha", "programa_gestos", "nivel", "nivel_automatico", "aciertos", "fallos", "porcentaje", "tiempo_medio_s", "calidad_gesto_pct", "duracion_s"]];
+  h.forEach((r) => filas.push([r.f, (PROGRAMAS[r.prog] || {}).nombre || "", (NIVELES[r.nivel] || {}).nombre || "", r.auto ? "sí" : "no", r.ac, r.fa,
     Math.round(100 * r.ac / Math.max(1, r.ac + r.fa)),
-    r.tm != null ? (r.tm / 1000).toFixed(1).replace(".", ",") : "", r.dur ?? "", r.ah ?? "", r.av ?? ""]));
+    r.tm != null ? (r.tm / 1000).toFixed(1).replace(".", ",") : "", r.cal ?? "", r.dur ?? ""]));
   // Punto y coma y marca especial al principio: así Excel en español abre bien los acentos y las columnas
   const texto = "\ufeff" + filas.map((f) => f.join(";")).join("\n");
   const enlace = document.createElement("a");
@@ -1054,146 +1144,63 @@ $("btnBorrarHist").addEventListener("click", () => {
 });
 
 /* ---------- Menú ---------- */
-function opciones(lista, seleccionado) {
-  return Object.entries(lista)
-    .map(([clave, nombre]) =>
-      `<option value="${clave}" ${clave === seleccionado ? "selected" : ""}>${nombre}</option>`)
-    .join("");
-}
-function opcionesGestos(seleccionado) {
-  return `<optgroup label="Gestos de serie">${opciones(GESTOS_SERIE, seleccionado)}</optgroup>` +
-         `<optgroup label="Gestos propios">${opciones(GESTOS_PROPIOS, seleccionado)}</optgroup>`;
-}
-
-// Cada ajuste del menú se "ata" a un valor de la configuración.
-// "refrescos" guarda cómo volver a pintar cada uno (por ejemplo, al elegir un nivel).
-const refrescos = [];
-
-function cambioManual(clave) {
-  // Si tocas un valor que forma parte de un nivel, el nivel pasa a "Personalizado"
-  if (CLAVES_NIVEL.has(clave) && config.nivel !== "personalizado") {
-    config.nivel = "personalizado";
-    $("selNivel").value = "personalizado";
-  }
-}
-function ligarRango(idRango, idValor, clave, formato) {
-  const rango = $(idRango), valor = $(idValor);
-  const pintar = () => { rango.value = config[clave]; valor.textContent = formato(config[clave]); };
-  pintar(); refrescos.push(pintar);
-  rango.addEventListener("input", () => {
-    config[clave] = Number(rango.value);
-    valor.textContent = formato(config[clave]);
-    cambioManual(clave); guardarConfig();
-  });
-}
-function ligarSelect(idSelect, clave) {
-  const sel = $(idSelect);
-  const pintar = () => { sel.value = config[clave]; };
-  pintar(); refrescos.push(pintar);
-  sel.addEventListener("change", () => {
-    config[clave] = sel.value;
-    cambioManual(clave); guardarConfig(); actualizarVisibilidad();
-  });
-}
-function ligarCasilla(idCasilla, clave) {
-  const cas = $(idCasilla);
-  const pintar = () => { cas.checked = !!config[clave]; };
-  pintar(); refrescos.push(pintar);
-  cas.addEventListener("change", () => { config[clave] = cas.checked; guardarConfig(); });
+// Texto que explica qué cambia en cada nivel (se crea a partir de los valores de NIVELES)
+function textoNivel(clave) {
+  const v = NIVELES[clave];
+  const estilo = {
+    distintas: "Cada gesto tiene su propia forma y su propio color.",
+    colores: "Todas las figuras son círculos y cada gesto tiene un color distinto.",
+    iguales: "Todas las figuras son idénticas (misma forma y mismo color): solo las diferencia el dibujo del gesto."
+  }[v.estilo];
+  const posicion = v.posicion === "fija" ? "siempre en el mismo sitio" : "en un sitio al azar";
+  const movimiento = { quieta: "quietas", lenta: "moviéndose despacio", media: "moviéndose a velocidad media", rapida: "moviéndose rápido" }[v.movimiento];
+  const mantener = (v.mantener / 1000).toFixed(1).replace(".", ",");
+  return `${v.simultaneas} ${v.simultaneas === 1 ? "figura" : "figuras"} a la vez, ${posicion} y ${movimiento}. ${estilo} ` +
+         `Cada figura dura ${v.duracion} segundos y hay que mantener el gesto ${mantener} s. La partida dura ${v.tiempoTotal} segundos.` +
+         (v.parcial ? ` Aquí no hace falta completar el gesto: basta con hacer al menos el ${Math.round(v.parcial * 100)} % del movimiento (por ejemplo, acercar el pulgar sin llegar a tocar el dedo).` : "");
 }
 
-const segundos = (v) => v + " s";
-ligarRango("rngTotal", "valTotal", "total", (v) => v);
-ligarRango("rngTiempoTotal", "valTiempoTotal", "tiempoTotal", (v) => v + " segundos");
-ligarRango("rngSimult", "valSimult", "simultaneas", (v) => v);
-ligarRango("rngDuracion", "valDuracion", "duracion", (v) => v === 0 ? "sin límite" : segundos(v));
-ligarRango("rngMantener", "valMantener", "mantener",
-  (v) => v < 1000 ? v + " ms" : (v / 1000).toFixed(1).replace(".", ",") + " s");
-ligarRango("rngConfianza", "valConfianza", "confianza", (v) => v + " %");
-ligarSelect("selEjercicio", "ejercicio");
-ligarSelect("selDedo", "dedoToque");
-ligarSelect("selModoPartida", "modoPartida");
-ligarSelect("selPosicion", "posicion");
-ligarSelect("selMovimiento", "movimiento");
-ligarSelect("selMostrar", "mostrar");
-ligarCasilla("chkSonido", "sonido");
-ligarCasilla("chkHistorial", "guardarHistorial");
-
-// El nivel es especial: al elegirlo, cambia varios valores de golpe
-refrescos.push(() => { $("selNivel").value = config.nivel; });
-$("selNivel").value = config.nivel;
-$("selNivel").addEventListener("change", (e) => {
-  config.nivel = e.target.value;
-  if (NIVELES[config.nivel]) Object.assign(config, NIVELES[config.nivel]);
-  refrescos.forEach((f) => f());
-  guardarConfig();
-});
-
-// Muestra u oculta partes del menú según lo que hayas elegido
-function actualizarVisibilidad() {
-  const dedo = config.ejercicio === "dedo", tiempo = config.modoPartida === "tiempo";
-  const alternar = (clase, ocultar) =>
-    document.querySelectorAll("." + clase).forEach((e) => e.classList.toggle("oculto", ocultar));
-  alternar("soloGestos", dedo);
-  alternar("soloDedo", !dedo);
-  alternar("soloFiguras", tiempo);
-  alternar("soloTiempo", !tiempo);
+// Texto que explica cómo funciona el nivel automático (se crea a partir de REGLAS)
+function textoAuto(programa = config.programa) {
+  const R = REGLAS;
+  return `El nivel se ajusta solo después de cada partida. Empieza en Fácil, y cada programa de gestos lleva su propio nivel ` +
+    `(ahora, en este programa: ${NIVELES[nivelAuto(programa)].nombre}). ` +
+    `Sube un nivel cuando haces ${R.subirPartidas} partidas seguidas con al menos un ${R.subirPrecision} % de aciertos ` +
+    `y empezando cada gesto en menos del ${Math.round(R.subirRapidez * 100)} % del tiempo de la figura. ` +
+    `Baja un nivel si en una partida aciertas menos de un ${R.bajarMuyMala} %, o si en ${R.bajarPartidas} partidas seguidas aciertas menos de un ${R.bajarFlojo} %. ` +
+    `Una partida solo cuenta si han salido al menos ${R.minimoFiguras} figuras (salvo que no consigas ningún acierto en toda la partida: entonces también baja). ` +
+    `Para salir del nivel Muy fácil hace falta, además, hacer los gestos al menos al ${R.subirCalidad} % del movimiento, de media. ` +
+    `El nivel nunca cambia más de un escalón cada vez.`;
 }
-
-// Ejercicios ya preparados
-$("selEjPre").innerHTML = Object.entries(EJERCICIOS)
-  .map(([clave, e]) => `<option value="${clave}">${e.nombre}</option>`).join("");
-$("btnCargarEj").addEventListener("click", () => {
-  const ej = EJERCICIOS[$("selEjPre").value];
-  if (!ej) return;
-  const formas = Object.keys(FORMAS);
-  config.figuras = ej.gestos.map((g, i) =>
-    ({ forma: formas[i % formas.length], color: PALETA[i % PALETA.length], gesto: g }));
-  guardarConfig(); pintarMenu();
-});
 
 function pintarMenu() {
-  refrescos.forEach((f) => f());
-  const cont = $("listaFiguras");
-  cont.innerHTML = "";
-  config.figuras.forEach((fig, i) => {
-    const tarjeta = document.createElement("div");
-    tarjeta.className = "figura";
-    tarjeta.innerHTML = `
-      <label for="f${i}">Forma</label>
-      <select id="f${i}">${opciones(FORMAS, fig.forma)}</select>
-      <label for="c${i}">Color</label>
-      <input type="color" id="c${i}" value="${fig.color}">
-      <label for="g${i}" class="soloGestos">Gesto</label>
-      <select id="g${i}" class="soloGestos">${opcionesGestos(fig.gesto)}</select>
-      ${config.figuras.length > 1 ? `<span></span><button data-quitar="${i}">Quitar esta figura</button>` : ""}`;
-    cont.appendChild(tarjeta);
-
-    $("f" + i).addEventListener("change", (e) => { fig.forma = e.target.value; guardarConfig(); });
-    $("c" + i).addEventListener("input",  (e) => { fig.color = e.target.value; guardarConfig(); });
-    $("g" + i).addEventListener("change", (e) => { fig.gesto = e.target.value; guardarConfig(); });
-    const quitar = tarjeta.querySelector("[data-quitar]");
-    if (quitar) quitar.addEventListener("click", () => {
-      config.figuras.splice(i, 1);
-      guardarConfig(); pintarMenu();
-    });
-  });
-  actualizarVisibilidad();
+  $("selPrograma").value = config.programa;
+  $("notaPrograma").textContent = PROGRAMAS[config.programa].descripcion;
+  $("selNivel").value = config.nivel;
+  $("notaNivel").textContent = config.nivel === "auto" ? textoAuto() : textoNivel(config.nivel);
+  $("btnResetAuto").classList.toggle("oculto", config.nivel !== "auto");
+  $("chkSonido").checked = !!config.sonido;
+  $("chkHistorial").checked = !!config.guardarHistorial;
 }
-
-$("btnAnadir").addEventListener("click", () => {
-  config.figuras.push({ forma: "circulo", color: PALETA[0], gesto: "Closed_Fist" });
-  guardarConfig(); pintarMenu();
+$("btnResetAuto").addEventListener("click", () => {
+  const todos = leerAdaptacion();
+  delete todos[config.programa];       // este programa vuelve a empezar en Fácil
+  guardarAdaptacion(todos);
+  pintarMenu();
 });
+
+$("selPrograma").addEventListener("change", (e) => { config.programa = e.target.value; guardarConfig(); pintarMenu(); });
+$("selNivel").addEventListener("change", (e) => { config.nivel = e.target.value; guardarConfig(); pintarMenu(); });
+$("chkSonido").addEventListener("change", (e) => { config.sonido = e.target.checked; guardarConfig(); });
+$("chkHistorial").addEventListener("change", (e) => { config.guardarHistorial = e.target.checked; guardarConfig(); });
+
 function abrirMenu() { pausar(); pintarMenu(); $("fin").classList.add("oculto"); $("menu").classList.remove("oculto"); }
 $("btnMenu").addEventListener("click", abrirMenu);
 $("btnFinMenu").addEventListener("click", abrirMenu);
 $("btnCerrarMenu").addEventListener("click", () => {
   $("menu").classList.add("oculto");
-  pintarReglas();
-  nuevaPartida();
+  empezarPartida();     // recoge el programa y el nivel elegidos
 });
-actualizarVisibilidad();
 </script>
 </body>
 </html>
