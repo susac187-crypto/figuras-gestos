@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Figuras y gestos</title>
+
+<!-- ============ 1) ASPECTO (CSS) ============ -->
+<style>
+  :root {
+    --fondo: #14181f;
+    --panel: #1f2530;
+    --texto: #f3f5f8;
+    --suave: #a9b3c2;
+    --acento: #35d0ba;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--fondo); color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  /* El vídeo de la cámara ocupa toda la pantalla (y se ve como un espejo) */
+  video {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; transform: scaleX(-1); opacity: .55;
+  }
+  /* El lienzo va encima del vídeo y es donde se dibujan las figuras */
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+  #estado {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px;
+    background: rgba(20,24,31,.8); padding: 8px 14px; border-radius: 999px;
+    font-size: 1rem;
+  }
+  #botones {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    left: 0; right: 0; display: flex; gap: 12px; justify-content: center;
+  }
+  button, select, input { font: inherit; }
+  button {
+    background: var(--panel); color: var(--texto); border: 2px solid #3a4352;
+    padding: 12px 20px; border-radius: 12px; cursor: pointer;
+  }
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 3px solid var(--acento); outline-offset: 2px;
+  }
+  button.principal { background: var(--acento); color: #08211d; border-color: var(--acento); font-weight: 600; }
+
+  /* Pantalla de inicio */
+  #inicio {
+    position: fixed; inset: 0; background: var(--fondo);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px; text-align: center;
+  }
+  #inicio h1 { margin: 0; font-size: 1.8rem; }
+  #inicio p { margin: 0; color: var(--suave); max-width: 32ch; line-height: 1.4; }
+
+  /* Menú de configuración */
+  #menu {
+    position: fixed; inset: 0; background: rgba(20,24,31,.97);
+    overflow-y: auto; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px 32px;
+  }
+  #menu h2 { margin: 0 0 4px; }
+  #menu .ayuda { color: var(--suave); margin: 0 0 16px; }
+  .figura {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center;
+    background: var(--panel); padding: 12px; border-radius: 12px; margin-bottom: 12px;
+  }
+  .figura label { color: var(--suave); }
+  .figura select, .figura input[type=color] {
+    width: 100%; padding: 8px; border-radius: 8px; border: 2px solid #3a4352;
+    background: var(--fondo); color: var(--texto);
+  }
+  .figura input[type=color] { height: 42px; padding: 2px; }
+  .ajuste { margin: 16px 0; }
+  .ajuste input[type=range] { width: 100%; }
+  .oculto { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+
+<!-- ============ 2) ELEMENTOS DE LA PÁGINA (HTML) ============ -->
+<body>
+  <video id="video" playsinline muted></video>
+  <canvas id="lienzo"></canvas>
+
+  <div id="estado">Gesto: ninguno</div>
+
+  <div id="botones">
+    <button id="btnMenu">Menú</button>
+    <button id="btnReiniciar">Volver a mostrar figuras</button>
+  </div>
+
+  <div id="inicio">
+    <h1>Figuras y gestos</h1>
+    <p>Haz un gesto con la mano delante de la cámara y las figuras desaparecerán.</p>
+    <button id="btnEmpezar" class="principal">Activar la cámara</button>
+    <p id="mensaje"></p>
+  </div>
+
+  <div id="menu" class="oculto">
+    <h2>Menú</h2>
+    <p class="ayuda">Elige el gesto que hace desaparecer cada figura.</p>
+    <div id="listaFiguras"></div>
+    <button id="btnAnadir">Añadir figura</button>
+
+    <div class="ajuste">
+      <label for="rngMantener">Tiempo que hay que mantener el gesto: <b id="valMantener"></b> ms</label>
+      <input type="range" id="rngMantener" min="0" max="2000" step="100">
+    </div>
+    <div class="ajuste">
+      <label for="rngConfianza">Seguridad mínima del gesto: <b id="valConfianza"></b> %</label>
+      <input type="range" id="rngConfianza" min="30" max="95" step="5">
+    </div>
+
+    <button id="btnCerrarMenu" class="principal">Guardar y volver</button>
+  </div>
+
+<!-- ============ 3) LÓGICA (JavaScript) ============ -->
+<script type="module">
+// Cargamos MediaPipe (la inteligencia artificial que reconoce la mano)
+import { GestureRecognizer, FilesetResolver }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm";
+
+/* ---------- Listas de opciones ---------- */
+// Los nombres de la izquierda los usa MediaPipe; los de la derecha son lo que ves tú.
+const GESTOS = {
+  Closed_Fist: "Puño cerrado",
+  Open_Palm:   "Mano abierta",
+  Thumb_Up:    "Pulgar arriba",
+  Thumb_Down:  "Pulgar abajo",
+  Pointing_Up: "Dedo señalando arriba",
+  Victory:     "Victoria (dos dedos)",
+  ILoveYou:    "Te quiero (pulgar, índice y meñique)"
+};
+const FORMAS = {
+  circulo: "Círculo", cuadrado: "Cuadrado", triangulo: "Triángulo",
+  rombo: "Rombo", hexagono: "Hexágono", estrella: "Estrella"
+};
+
+/* ---------- Configuración (se guarda en el móvil) ---------- */
+const CONFIG_INICIAL = {
+  mantener: 400,    // milisegundos que hay que mantener el gesto
+  confianza: 60,    // % mínimo de seguridad
+  figuras: [
+    { forma: "circulo",   color: "#ff6b6b", gesto: "Closed_Fist" },
+    { forma: "cuadrado",  color: "#4dabf7", gesto: "Open_Palm" },
+    { forma: "triangulo", color: "#ffd43b", gesto: "Thumb_Up" },
+    { forma: "estrella",  color: "#b197fc", gesto: "Victory" },
+    { forma: "hexagono",  color: "#69db7c", gesto: "Pointing_Up" },
+    { forma: "rombo",     color: "#ffa94d", gesto: "ILoveYou" }
+  ]
+};
+
+function cargarConfig() {
+  try {
+    const guardado = localStorage.getItem("figuras-gestos");
+    if (guardado) return JSON.parse(guardado);
+  } catch (e) { /* si falla, usamos la configuración inicial */ }
+  return structuredClone(CONFIG_INICIAL);
+}
+function guardarConfig() {
+  try { localStorage.setItem("figuras-gestos", JSON.stringify(config)); } catch (e) {}
+}
+let config = cargarConfig();
+
+/* ---------- Referencias a los elementos de la página ---------- */
+const $ = (id) => document.getElementById(id);
+const video = $("video"), lienzo = $("lienzo"), ctx = lienzo.getContext("2d");
+
+/* ---------- Estado de las figuras ---------- */
+// "visibilidad" va de 1 (se ve) a 0 (ha desaparecido). "objetivo" es hacia donde va.
+let visibilidad = [], objetivo = [];
+function reiniciarFiguras() {
+  visibilidad = config.figuras.map(() => 1);
+  objetivo    = config.figuras.map(() => 1);
+}
+reiniciarFiguras();
+
+/* ---------- Dibujar ---------- */
+function ajustarLienzo() {
+  const dpr = window.devicePixelRatio || 1;
+  lienzo.width  = window.innerWidth  * dpr;
+  lienzo.height = window.innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", ajustarLienzo);
+ajustarLienzo();
+
+// Dibuja el contorno de una forma centrada en (cx, cy) con radio r
+function trazarForma(tipo, cx, cy, r) {
+  ctx.beginPath();
+  if (tipo === "circulo") {
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  } else if (tipo === "cuadrado") {
+    ctx.rect(cx - r, cy - r, r * 2, r * 2);
+  } else {
+    // triángulo, rombo, hexágono y estrella son polígonos con distinto nº de puntas
+    const puntos = { triangulo: 3, rombo: 4, hexagono: 6, estrella: 10 }[tipo];
+    for (let i = 0; i < puntos; i++) {
+      const angulo = -Math.PI / 2 + (i * 2 * Math.PI) / puntos;
+      const radio = (tipo === "estrella" && i % 2 === 1) ? r * 0.45 : r;
+      const x = cx + radio * Math.cos(angulo);
+      const y = cy + radio * Math.sin(angulo);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+  }
+  ctx.closePath();
+}
+
+function dibujar() {
+  const ancho = window.innerWidth, alto = window.innerHeight;
+  ctx.clearRect(0, 0, ancho, alto);
+
+  const n = config.figuras.length;
+  const columnas = ancho > alto ? Math.min(3, n) : Math.min(2, n);
+  const filas = Math.ceil(n / columnas);
+  const margenSup = 70, margenInf = 90;               // espacio para el estado y los botones
+  const celdaAncho = ancho / columnas;
+  const celdaAlto = (alto - margenSup - margenInf) / filas;
+  const radio = Math.min(celdaAncho, celdaAlto) * 0.34;
+
+  config.figuras.forEach((fig, i) => {
+    // Acercamos poco a poco la visibilidad a su objetivo (así se desvanece suave)
+    visibilidad[i] += (objetivo[i] - visibilidad[i]) * 0.15;
+    if (visibilidad[i] < 0.01) return;                // ya no se ve: no dibujamos
+
+    const cx = (i % columnas) * celdaAncho + celdaAncho / 2;
+    const cy = margenSup + Math.floor(i / columnas) * celdaAlto + celdaAlto / 2;
+
+    ctx.globalAlpha = visibilidad[i];
+    trazarForma(fig.forma, cx, cy, radio * (0.6 + 0.4 * visibilidad[i]));
+    ctx.fillStyle = fig.color;
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#ffffff";
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Reconocer gestos ---------- */
+let reconocedor = null;
+let gestoActual = "Ninguno";   // gesto que se está viendo ahora
+let desde = 0;                 // desde cuándo se ve ese gesto
+let ultimoFotograma = -1;
+
+function procesar(resultado) {
+  let gesto = "Ninguno", seguridad = 0;
+  if (resultado.gestures.length > 0) {
+    const mejor = resultado.gestures[0][0];
+    gesto = mejor.categoryName;
+    seguridad = mejor.score * 100;
+  }
+  if (gesto === "None" || seguridad < config.confianza) gesto = "Ninguno";
+
+  const ahora = performance.now();
+  if (gesto !== gestoActual) { gestoActual = gesto; desde = ahora; }
+
+  $("estado").textContent = "Gesto: " + (GESTOS[gesto] || "ninguno");
+
+  // Si el gesto se ha mantenido el tiempo suficiente, desaparecen las figuras que lo tengan asignado
+  if (gesto !== "Ninguno" && ahora - desde >= config.mantener) {
+    config.figuras.forEach((fig, i) => {
+      if (fig.gesto === gesto) objetivo[i] = 0;
+    });
+  }
+}
+
+// Este bucle se repite sin parar: mira la cámara, reconoce el gesto y dibuja
+function bucle() {
+  if (video.currentTime !== ultimoFotograma) {
+    ultimoFotograma = video.currentTime;
+    const resultado = reconocedor.recognizeForVideo(video, performance.now());
+    procesar(resultado);
+  }
+  dibujar();
+  requestAnimationFrame(bucle);
+}
+
+/* ---------- Arrancar cámara y MediaPipe ---------- */
+async function empezar() {
+  $("btnEmpezar").disabled = true;
+  $("mensaje").textContent = "Cargando… puede tardar unos segundos.";
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    const opciones = (delegado) => ({
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task",
+        delegate: delegado
+      },
+      runningMode: "VIDEO",
+      numHands: 1
+    });
+    try {
+      reconocedor = await GestureRecognizer.createFromOptions(vision, opciones("GPU"));
+    } catch (e) {
+      // Si el móvil no admite GPU, usamos el procesador normal
+      reconocedor = await GestureRecognizer.createFromOptions(vision, opciones("CPU"));
+    }
+
+    const camara = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    video.srcObject = camara;
+    await video.play();
+
+    $("inicio").classList.add("oculto");
+    bucle();
+  } catch (error) {
+    $("btnEmpezar").disabled = false;
+    $("mensaje").textContent =
+      "No se ha podido iniciar. Comprueba que has dado permiso a la cámara y que tienes conexión a internet.";
+    console.error(error);
+  }
+}
+$("btnEmpezar").addEventListener("click", empezar);
+
+/* ---------- Menú ---------- */
+function opciones(lista, seleccionado) {
+  return Object.entries(lista)
+    .map(([clave, nombre]) =>
+      `<option value="${clave}" ${clave === seleccionado ? "selected" : ""}>${nombre}</option>`)
+    .join("");
+}
+
+function pintarMenu() {
+  const cont = $("listaFiguras");
+  cont.innerHTML = "";
+  config.figuras.forEach((fig, i) => {
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "figura";
+    tarjeta.innerHTML = `
+      <label for="f${i}">Forma</label>
+      <select id="f${i}">${opciones(FORMAS, fig.forma)}</select>
+      <label for="c${i}">Color</label>
+      <input type="color" id="c${i}" value="${fig.color}">
+      <label for="g${i}">Desaparece con</label>
+      <select id="g${i}">${opciones(GESTOS, fig.gesto)}</select>
+      <span></span>
+      <button data-quitar="${i}">Quitar esta figura</button>`;
+    cont.appendChild(tarjeta);
+
+    $("f" + i).addEventListener("change", (e) => { fig.forma = e.target.value; guardarConfig(); });
+    $("c" + i).addEventListener("input",  (e) => { fig.color = e.target.value; guardarConfig(); });
+    $("g" + i).addEventListener("change", (e) => { fig.gesto = e.target.value; guardarConfig(); });
+    tarjeta.querySelector("[data-quitar]").addEventListener("click", () => {
+      config.figuras.splice(i, 1);
+      guardarConfig(); reiniciarFiguras(); pintarMenu();
+    });
+  });
+
+  $("rngMantener").value = config.mantener;
+  $("valMantener").textContent = config.mantener;
+  $("rngConfianza").value = config.confianza;
+  $("valConfianza").textContent = config.confianza;
+}
+
+$("rngMantener").addEventListener("input", (e) => {
+  config.mantener = Number(e.target.value);
+  $("valMantener").textContent = config.mantener; guardarConfig();
+});
+$("rngConfianza").addEventListener("input", (e) => {
+  config.confianza = Number(e.target.value);
+  $("valConfianza").textContent = config.confianza; guardarConfig();
+});
+$("btnAnadir").addEventListener("click", () => {
+  config.figuras.push({ forma: "circulo", color: "#ff6b6b", gesto: "Closed_Fist" });
+  guardarConfig(); reiniciarFiguras(); pintarMenu();
+});
+$("btnMenu").addEventListener("click", () => { pintarMenu(); $("menu").classList.remove("oculto"); });
+$("btnCerrarMenu").addEventListener("click", () => { $("menu").classList.add("oculto"); reiniciarFiguras(); });
+$("btnReiniciar").addEventListener("click", reiniciarFiguras);
+</script>
+</body>
+</html>
